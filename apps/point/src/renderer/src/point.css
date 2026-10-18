@@ -1,0 +1,46 @@
+/* Layout do AlcinaPoint. */
+.ao-point-root {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+}
+.ao-point-thumbs {
+  width: 176px;
+  flex: none;
+  border-right: 1px solid var(--ao-border);
+  overflow: auto;
+  padding: 10px;
+  background: var(--ao-surface);
+}
+.ao-point-thumb {
+  border: 2px solid transparent;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  position: relative;
+  box-shadow: var(--ao-shadow);
+}
+.ao-point-thumb.sel {
+  border-color: var(--ao-green);
+}
+.ao-point-thumb .num {
+  position: absolute;
+  left: -6px;
+  top: -2px;
+  font-size: 11px;
+  color: var(--ao-text-3);
+}
+.ao-point-stage {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  background: var(--ao-surface-2);
+  overflow: hidden;
+  position: relative;
+}
+.ao-point-slide {
+  position: relative;
+  border-radius: 2px;
+  overflow: hidden;
+}
