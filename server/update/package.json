@@ -1,0 +1,12 @@
+{
+  "name": "alcina-office-update-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Servidor de atualizações (feed do electron-updater) da suíte Alcina Office.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}

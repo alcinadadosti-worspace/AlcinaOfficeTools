@@ -1,0 +1,43 @@
+name: Instaladores
+
+# Gera os instaladores (Windows .exe + Linux AppImage/.deb) de cada aplicativo.
+# Dispara manualmente (workflow_dispatch) ou ao publicar uma tag "v*".
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        app: [shell, sheets, docs, point, notes, bi]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Instalar dependências (workspace)
+        run: npm ci
+
+      - name: Gerar instaladores do app
+        working-directory: apps/${{ matrix.app }}
+        run: npm run dist
+
+      - name: Publicar artefatos
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-${{ matrix.os }}
+          if-no-files-found: ignore
+          path: |
+            apps/${{ matrix.app }}/release/*.exe
+            apps/${{ matrix.app }}/release/*.AppImage
+            apps/${{ matrix.app }}/release/*.deb
+            apps/${{ matrix.app }}/release/*.yml
+            apps/${{ matrix.app }}/release/*.blockmap

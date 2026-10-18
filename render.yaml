@@ -1,0 +1,10 @@
+# Blueprint do Render para o servidor de atualizações da suíte Alcina Office.
+# No painel do Render: New → Blueprint → aponte para este repositório.
+services:
+  - type: web
+    name: alcina-office-updates
+    runtime: node
+    plan: free
+    rootDir: server/update
+    buildCommand: npm install
+    startCommand: npm start
