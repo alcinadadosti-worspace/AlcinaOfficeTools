@@ -16,3 +16,7 @@ contextBridge.exposeInMainWorld('alcinaUpdater', {
   check: () => ipcRenderer.invoke(UPDATER_CHANNELS.check),
   install: () => ipcRenderer.invoke(UPDATER_CHANNELS.install)
 })
+
+contextBridge.exposeInMainWorld('alcinaSuite', {
+  launch: (key: string) => ipcRenderer.invoke('app:launch', key)
+})

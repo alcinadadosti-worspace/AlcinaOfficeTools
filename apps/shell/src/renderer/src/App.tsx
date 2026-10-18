@@ -16,11 +16,11 @@ interface SuiteApp {
 }
 
 const APPS: SuiteApp[] = [
-  { key: 'sheets', name: 'AlcinaSheets', short: 'Sheets', desc: 'Planilhas e fórmulas', glyph: <SheetsGlyph size={40} />, color: appColors.sheets, ready: false },
-  { key: 'docs', name: 'AlcinaDocs', short: 'Docs', desc: 'Documentos de texto', glyph: <DocsGlyph size={40} />, color: appColors.docs, ready: false },
-  { key: 'point', name: 'AlcinaPoint', short: 'Point', desc: 'Apresentações', glyph: <PointGlyph size={40} />, color: appColors.point, ready: false },
-  { key: 'notes', name: 'AlcinaNotes', short: 'Notes', desc: 'Anotações', glyph: <NotesGlyph size={40} />, color: appColors.notes, ready: false },
-  { key: 'bi', name: 'AlcinaBi', short: 'BI', desc: 'Relatórios e BI', glyph: <BiGlyph size={40} />, color: appColors.bi, ready: false }
+  { key: 'sheets', name: 'AlcinaSheets', short: 'Sheets', desc: 'Planilhas e fórmulas', glyph: <SheetsGlyph size={40} />, color: appColors.sheets, ready: true },
+  { key: 'docs', name: 'AlcinaDocs', short: 'Docs', desc: 'Documentos de texto', glyph: <DocsGlyph size={40} />, color: appColors.docs, ready: true },
+  { key: 'point', name: 'AlcinaPoint', short: 'Point', desc: 'Apresentações', glyph: <PointGlyph size={40} />, color: appColors.point, ready: true },
+  { key: 'notes', name: 'AlcinaNotes', short: 'Notes', desc: 'Anotações', glyph: <NotesGlyph size={40} />, color: appColors.notes, ready: true },
+  { key: 'bi', name: 'AlcinaBi', short: 'BI', desc: 'Relatórios e BI', glyph: <BiGlyph size={40} />, color: appColors.bi, ready: true }
 ]
 
 export function App(): ReactNode {
@@ -35,7 +35,10 @@ export function App(): ReactNode {
   }, [])
 
   const launch = (a: SuiteApp): void => {
-    setNotice(`${a.name} chega nas próximas fases. Por enquanto, a base da suíte — marca, casca de interface e atualização automática — já está pronta e instalável.`)
+    setNotice(`Abrindo ${a.name}…`)
+    void window.alcinaSuite.launch(a.key).then((r) => {
+      setNotice(r.ok ? `${a.name} está abrindo em uma nova janela.` : r.error || `Não foi possível abrir ${a.name}.`)
+    })
   }
 
   const ribbon: RibbonTab[] = useMemo(

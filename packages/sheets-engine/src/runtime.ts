@@ -15,7 +15,8 @@ export function flatten(args: ArgValue[]): CellValue[] {
 
 export function scalar(a: ArgValue): CellValue {
   if (Array.isArray(a)) return a.length ? a[0] : null
-  return a
+  // Coalesce undefined (argumento opcional ausente) para null → tratado como 0/vazio.
+  return a ?? null
 }
 
 /** Interpreta um texto como número (aceita 1.234,56 / 1234,56 / 1234.56). */

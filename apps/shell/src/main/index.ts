@@ -1,6 +1,7 @@
 // Processo principal do app "Alcina Office" (central da suíte).
 import { app, BrowserWindow, ipcMain, Menu, shell } from 'electron'
 import { join } from 'node:path'
+import { spawn } from 'node:child_process'
 import { setupAutoUpdates } from '@alcina/updater/main'
 
 // Feed de atualização (servidor no Render). Pode ser sobrescrito por variável de ambiente.
@@ -42,6 +43,19 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
   ipcMain.handle('app:version', () => app.getVersion())
   ipcMain.handle('app:platform', () => process.platform)
+  ipcMain.handle('app:launch', (_e, key: string) => {
+    const allowed = ['sheets', 'docs', 'point', 'notes', 'bi']
+    if (!allowed.includes(key)) return { ok: false, error: 'Aplicativo desconhecido.' }
+    if (app.isPackaged) return { ok: false, error: 'Abra pelo atalho do aplicativo instalado.' }
+    try {
+      // Em desenvolvimento, abre o app irmão (apps/<key>) em sua própria janela.
+      const dir = join(process.cwd(), '..', key)
+      spawn('npm', ['run', 'dev'], { cwd: dir, detached: true, stdio: 'ignore', shell: true }).unref()
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  })
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

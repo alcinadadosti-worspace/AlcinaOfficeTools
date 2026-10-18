@@ -7,6 +7,9 @@ declare global {
       getPlatform(): Promise<string>
     }
     alcinaUpdater: UpdaterBridge
+    alcinaSuite: {
+      launch(key: string): Promise<{ ok: boolean; error?: string }>
+    }
   }
 }
 
