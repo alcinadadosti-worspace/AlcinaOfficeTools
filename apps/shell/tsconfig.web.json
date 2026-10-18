@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "paths": {
+      "@alcina/brand": ["../../packages/brand/src/index.ts"],
+      "@alcina/ui-shell": ["../../packages/ui-shell/src/index.ts"],
+      "@alcina/updater": ["../../packages/updater/src/index.ts"],
+      "@alcina/updater/renderer": ["../../packages/updater/src/renderer.ts"]
+    }
+  },
+  "include": [
+    "src/renderer/src/**/*",
+    "src/preload/*.d.ts",
+    "../../packages/brand/src/**/*",
+    "../../packages/ui-shell/src/**/*",
+    "../../packages/updater/src/index.ts",
+    "../../packages/updater/src/ipc.ts",
+    "../../packages/updater/src/renderer.ts"
+  ]
+}

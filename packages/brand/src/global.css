@@ -1,0 +1,96 @@
+/* Estilos base e tokens da suíte Alcina (verde / dourado / branco). */
+:root {
+  --ao-font: 'Segoe UI', 'Segoe UI Variable', system-ui, -apple-system, sans-serif;
+  --ao-green: #0f7a34;
+  --ao-green-strong: #0a5a26;
+  --ao-green-soft: #eef7f0;
+  --ao-gold: #c79a2a;
+  --ao-gold-text: #9a6d0c;
+  --ao-bg: #ffffff;
+  --ao-surface: #f4f7f3;
+  --ao-surface-2: #eaf0e8;
+  --ao-border: #d7e1d6;
+  --ao-text: #16211a;
+  --ao-text-2: #5c6e62;
+  --ao-text-3: #8a998f;
+  --ao-hover: #eef7f0;
+  --ao-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --ao-shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.18);
+  --ao-header-h: 48px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ao-green: #49b97c;
+    --ao-green-strong: #74d39e;
+    --ao-green-soft: #13251a;
+    --ao-gold: #dab55a;
+    --ao-gold-text: #dab55a;
+    --ao-bg: #0d1511;
+    --ao-surface: #141f18;
+    --ao-surface-2: #1b2720;
+    --ao-border: #27352c;
+    --ao-text: #e8efe9;
+    --ao-text-2: #9db0a2;
+    --ao-text-3: #6f8277;
+    --ao-hover: #1b2720;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --ao-green: #49b97c;
+  --ao-green-strong: #74d39e;
+  --ao-green-soft: #13251a;
+  --ao-gold: #dab55a;
+  --ao-gold-text: #dab55a;
+  --ao-bg: #0d1511;
+  --ao-surface: #141f18;
+  --ao-surface-2: #1b2720;
+  --ao-border: #27352c;
+  --ao-text: #e8efe9;
+  --ao-text-2: #9db0a2;
+  --ao-text-3: #6f8277;
+  --ao-hover: #1b2720;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: var(--ao-font);
+  background: var(--ao-bg);
+  color: var(--ao-text);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+#root {
+  height: 100%;
+}
+
+/* Regiões de arraste (caso uma barra de título personalizada seja usada no futuro). */
+.ao-drag {
+  -webkit-app-region: drag;
+}
+.ao-nodrag {
+  -webkit-app-region: no-drag;
+}
+
+.ao-fade-in {
+  animation: ao-fade 0.18s ease;
+}
+@keyframes ao-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
