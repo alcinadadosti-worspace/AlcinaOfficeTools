@@ -4,7 +4,7 @@ import { parseFormula, type Node } from './parser'
 import { parseA1, cellKey, parseKey } from './a1'
 import { type CellValue, isError, err } from './types'
 import { FUNCTIONS } from './functions'
-import { toNumber, toText, parseNumber, type ArgValue } from './runtime'
+import { toNumber, toText, parseNumber, type ArgValue, type Matrix } from './runtime'
 
 export interface CellEntry {
   row: number
@@ -168,20 +168,24 @@ export class SheetEngine {
   }
 
   private evalArg(node: Node): ArgValue {
-    if (node.type === 'range') return this.rangeValues(node.from, node.to)
+    if (node.type === 'range') return this.rangeMatrix(node.from, node.to)
     return this.eval(node)
   }
 
-  private rangeValues(from: string, to: string): CellValue[] {
+  private rangeMatrix(from: string, to: string): Matrix {
     const a = parseA1(from)
     const b = parseA1(to)
-    if (!a || !b) return [err('#REF!')]
+    if (!a || !b) return { kind: 'matrix', rows: 1, cols: 1, cells: [[err('#REF!')]] }
     const r1 = Math.min(a.row, b.row)
     const r2 = Math.max(a.row, b.row)
     const c1 = Math.min(a.col, b.col)
     const c2 = Math.max(a.col, b.col)
-    const out: CellValue[] = []
-    for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) out.push(this.getValue(r, c))
-    return out
+    const cells: CellValue[][] = []
+    for (let r = r1; r <= r2; r++) {
+      const row: CellValue[] = []
+      for (let c = c1; c <= c2; c++) row.push(this.getValue(r, c))
+      cells.push(row)
+    }
+    return { kind: 'matrix', rows: r2 - r1 + 1, cols: c2 - c1 + 1, cells }
   }
 }

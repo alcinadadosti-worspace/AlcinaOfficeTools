@@ -6,7 +6,7 @@ export type CellError = '#DIV/0!' | '#VALOR!' | '#NOME?' | '#REF!' | '#CIRC!' | 
 export type CellValue = number | string | boolean | null | { error: CellError }
 
 export function isError(v: CellValue): v is { error: CellError } {
-  return typeof v === 'object' && v !== null
+  return typeof v === 'object' && v !== null && 'error' in v
 }
 
 export function err(e: CellError): { error: CellError } {

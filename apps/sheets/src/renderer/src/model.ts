@@ -1,14 +1,29 @@
-// Modelo do documento: pasta de trabalho = lista de planilhas (cada uma com seu motor).
+// Modelo do documento: pasta de trabalho = planilhas (valores + estilos de célula).
 import { SheetEngine, type CellEntry } from '@alcina/sheets-engine'
+
+export type NumFmt = 'general' | 'number' | 'currency' | 'percent' | 'thousands'
+
+export interface CellStyle {
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  align?: 'left' | 'center' | 'right'
+  color?: string
+  fill?: string
+  fmt?: NumFmt
+  decimals?: number
+}
 
 export interface SheetDoc {
   name: string
   engine: SheetEngine
+  styles: Record<string, CellStyle>
 }
 
 export interface SavedSheet {
   name: string
   cells: CellEntry[]
+  styles?: Record<string, CellStyle>
 }
 
 export interface SavedWorkbook {
@@ -17,12 +32,16 @@ export interface SavedWorkbook {
   sheets: SavedSheet[]
 }
 
+export function cellKey(row: number, col: number): string {
+  return `${row},${col}`
+}
+
 export function newSheet(name: string): SheetDoc {
-  return { name, engine: new SheetEngine() }
+  return { name, engine: new SheetEngine(), styles: {} }
 }
 
 export function serialize(sheets: SheetDoc[]): SavedWorkbook {
-  return { version: 1, app: 'alcina-sheets', sheets: sheets.map((s) => ({ name: s.name, cells: s.engine.entries() })) }
+  return { version: 1, app: 'alcina-sheets', sheets: sheets.map((s) => ({ name: s.name, cells: s.engine.entries(), styles: s.styles })) }
 }
 
 export function deserialize(data: SavedWorkbook): SheetDoc[] {
@@ -30,7 +49,7 @@ export function deserialize(data: SavedWorkbook): SheetDoc[] {
   const out = (data.sheets ?? []).map((s) => {
     const e = new SheetEngine()
     e.load(s.cells ?? [])
-    return { name: s.name, engine: e }
+    return { name: s.name, engine: e, styles: s.styles ?? {} }
   })
   return out.length ? out : [newSheet('Planilha1')]
 }

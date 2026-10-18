@@ -1,21 +1,42 @@
 // Coerções e utilidades usadas pelo avaliador e pelas funções.
 import { type CellValue, type CellError, isError, err } from './types'
 
-/** Argumento de função: um valor ou um intervalo (lista de valores). */
-export type ArgValue = CellValue | CellValue[]
+/** Intervalo bidimensional (ex.: A1:C10) preservando linhas/colunas. */
+export interface Matrix {
+  kind: 'matrix'
+  rows: number
+  cols: number
+  cells: CellValue[][]
+}
 
+/** Argumento de função: um valor único ou um intervalo (matriz). */
+export type ArgValue = CellValue | Matrix
+
+export function isMatrix(a: ArgValue): a is Matrix {
+  return typeof a === 'object' && a !== null && (a as { kind?: string }).kind === 'matrix'
+}
+
+/** Achata qualquer argumento (matriz ou valor) em uma lista de valores. */
 export function flatten(args: ArgValue[]): CellValue[] {
   const out: CellValue[] = []
   for (const a of args) {
-    if (Array.isArray(a)) out.push(...a)
-    else out.push(a)
+    if (isMatrix(a)) {
+      for (const row of a.cells) for (const v of row) out.push(v)
+    } else {
+      out.push(a)
+    }
   }
   return out
 }
 
+/** Lista de valores de um único argumento (matriz vira lista; valor vira [valor]). */
+export function toList(a: ArgValue): CellValue[] {
+  return isMatrix(a) ? flatten([a]) : [a ?? null]
+}
+
+/** Primeiro valor escalar de um argumento (undefined de argumento opcional vira null). */
 export function scalar(a: ArgValue): CellValue {
-  if (Array.isArray(a)) return a.length ? a[0] : null
-  // Coalesce undefined (argumento opcional ausente) para null → tratado como 0/vazio.
+  if (isMatrix(a)) return a.cells[0]?.[0] ?? null
   return a ?? null
 }
 
@@ -41,7 +62,7 @@ export function toText(v: CellValue): string {
   if (isError(v)) return v.error
   if (v === null) return ''
   if (typeof v === 'boolean') return v ? 'VERDADEIRO' : 'FALSO'
-  if (typeof v === 'number') return numberToText(v)
+  if (typeof v === 'number') return String(v)
   return v
 }
 
@@ -56,12 +77,7 @@ export function toBool(v: CellValue): boolean | { error: CellError } {
   return err('#VALOR!')
 }
 
-function numberToText(n: number): string {
-  if (Number.isInteger(n)) return String(n)
-  return String(n)
-}
-
-/** Texto para exibição na grade (com vírgula decimal pt-BR). */
+/** Texto para exibição na grade (formato "geral", com vírgula decimal pt-BR). */
 export function displayValue(v: CellValue): string {
   if (isError(v)) return v.error
   if (v === null) return ''
