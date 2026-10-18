@@ -1,0 +1,16 @@
+{
+  "name": "alcina-office-tools",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Suíte de produtividade Alcina (clean-room): AlcinaSheets, AlcinaDocs, AlcinaPoint, AlcinaNotes e AlcinaBi.",
+  "author": "Alcina Dados TI",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "echo \"Builds por aplicativo: pnpm --filter <app> build\" && exit 0",
+    "typecheck": "echo \"Typecheck por pacote/app\" && exit 0"
+  }
+}

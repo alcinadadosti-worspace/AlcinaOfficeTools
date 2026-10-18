@@ -1,0 +1,27 @@
+# Dependências
+node_modules/
+.pnpm-store/
+
+# Saídas de build
+dist/
+out/
+build-output/
+release/
+*.tsbuildinfo
+
+# Vite / Electron
+.vite/
+
+# Ambiente e logs
+.env
+.env.*
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Sistema operacional / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
