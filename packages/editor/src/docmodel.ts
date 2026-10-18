@@ -1,5 +1,4 @@
-// Formato intermediário de documento, trocado entre renderer e processo principal
-// para gerar .docx (o renderer tem o conteúdo; o processo principal tem a lib docx).
+// Formato intermediário de documento (blocos), usado para gerar .docx e afins.
 
 export interface DocRun {
   text: string

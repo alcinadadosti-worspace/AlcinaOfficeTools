@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import mammoth from 'mammoth'
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, LevelFormat, BorderStyle } from 'docx'
 import { setupAutoUpdates } from '@alcina/updater/main'
-import type { DocBlock, DocRun } from '../shared/docmodel'
+import type { DocBlock, DocRun } from '@alcina/editor/docmodel'
 
 const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://alcina-office-updates.onrender.com/docs'
 

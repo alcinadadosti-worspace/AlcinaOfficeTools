@@ -1,6 +1,6 @@
 // Converte o documento do editor (ProseMirror) para blocos (.docx).
 import type { Node as PMNode } from 'prosemirror-model'
-import type { DocBlock, DocRun } from '../../shared/docmodel'
+import type { DocBlock, DocRun } from './docmodel'
 
 function inlineRuns(node: PMNode): DocRun[] {
   const runs: DocRun[] = []

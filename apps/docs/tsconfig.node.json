@@ -5,8 +5,9 @@
     "types": ["node"],
     "noEmit": true,
     "paths": {
-      "@alcina/updater/main": ["../../packages/updater/src/main.ts"]
+      "@alcina/updater/main": ["../../packages/updater/src/main.ts"],
+      "@alcina/editor/docmodel": ["../../packages/editor/src/docmodel.ts"]
     }
   },
-  "include": ["src/main/**/*", "src/preload/**/*.ts", "src/shared/**/*", "../../packages/updater/src/main.ts", "../../packages/updater/src/ipc.ts", "electron.vite.config.ts"]
+  "include": ["src/main/**/*", "src/preload/**/*.ts", "../../packages/updater/src/main.ts", "../../packages/updater/src/ipc.ts", "../../packages/editor/src/docmodel.ts", "electron.vite.config.ts"]
 }

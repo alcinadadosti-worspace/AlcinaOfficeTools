@@ -1,5 +1,5 @@
 // Abrir/salvar: formato próprio .alcdoc, importar/exportar .docx e exportar PDF.
-import type { EditorApi } from './Editor'
+import type { EditorApi } from '@alcina/editor'
 
 const enc = new TextEncoder()
 const dec = new TextDecoder()

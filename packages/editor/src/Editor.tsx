@@ -7,7 +7,7 @@ import { history, undoDepth, redoDepth } from 'prosemirror-history'
 import { schema } from './schema'
 import { editorKeymap, baseKeymapPlugin } from './commands'
 import { docToBlocks } from './pmdocx'
-import type { DocBlock } from '../../shared/docmodel'
+import type { DocBlock } from './docmodel'
 
 export interface Snapshot {
   strong: boolean

@@ -1,7 +1,7 @@
 // Preload do AlcinaDocs.
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { UPDATER_CHANNELS, type UpdateStatus } from '@alcina/updater'
-import type { DocBlock } from '../shared/docmodel'
+import type { DocBlock } from '@alcina/editor/docmodel'
 
 interface DialogOpts {
   filters?: { name: string; extensions: string[] }[]

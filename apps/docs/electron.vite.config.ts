@@ -10,7 +10,10 @@ const alias = {
   '@alcina/ui-shell': pkg('ui-shell/src/index.ts'),
   '@alcina/updater/main': pkg('updater/src/main.ts'),
   '@alcina/updater/renderer': pkg('updater/src/renderer.ts'),
-  '@alcina/updater': pkg('updater/src/index.ts')
+  '@alcina/updater': pkg('updater/src/index.ts'),
+  '@alcina/editor/editor.css': pkg('editor/src/editor.css'),
+  '@alcina/editor/docmodel': pkg('editor/src/docmodel.ts'),
+  '@alcina/editor': pkg('editor/src/index.ts')
 }
 
 export default defineConfig({

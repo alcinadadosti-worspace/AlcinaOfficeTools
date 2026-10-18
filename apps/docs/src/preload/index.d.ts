@@ -1,5 +1,5 @@
 import type { UpdaterBridge } from '@alcina/updater/renderer'
-import type { DocBlock } from '../shared/docmodel'
+import type { DocBlock } from '@alcina/editor/docmodel'
 
 interface FileFilter {
   name: string

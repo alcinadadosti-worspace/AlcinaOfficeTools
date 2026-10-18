@@ -1,22 +1,7 @@
-/* Estilo do editor AlcinaDocs (aparência de página de documento). */
-.ao-doc-scroll {
-  height: 100%;
-  overflow: auto;
-  background: var(--ao-surface-2);
-}
-.ao-doc-page {
-  max-width: 816px;
-  margin: 24px auto;
-  background: #ffffff;
-  box-shadow: var(--ao-shadow-lg);
-  border-radius: 2px;
-}
-.ao-doc-host {
-  padding: 64px 80px;
-}
+/* Estilo do editor compartilhado Alcina (ProseMirror). */
 .ao-doc-host .ProseMirror {
   outline: none;
-  min-height: 920px;
+  min-height: 100%;
   font-size: 15px;
   line-height: 1.6;
   color: #242424;
@@ -50,9 +35,4 @@
   border: none;
   border-top: 1px solid var(--ao-border);
   margin: 1em 0;
-}
-@media (max-width: 860px) {
-  .ao-doc-host {
-    padding: 36px 28px;
-  }
 }

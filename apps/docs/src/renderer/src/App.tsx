@@ -27,8 +27,7 @@ import type { Command } from 'prosemirror-state'
 import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
-import { Editor, type EditorApi, type Snapshot } from './Editor'
-import { cmd } from './commands'
+import { Editor, type EditorApi, type Snapshot, cmd } from '@alcina/editor'
 import { saveDoc, openDoc, importDocx, exportDocx, exportPdf, baseName } from './io'
 
 const EMPTY: Snapshot = { strong: false, em: false, underline: false, heading: 0, align: null, canUndo: false, canRedo: false }
