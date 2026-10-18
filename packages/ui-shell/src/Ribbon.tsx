@@ -7,6 +7,8 @@ export interface RibbonItem {
   icon?: ReactNode
   onClick?: () => void
   disabled?: boolean
+  /** Realça o botão (estado ativado, ex.: negrito aplicado). */
+  active?: boolean
 }
 export interface RibbonGroup {
   label: string
@@ -67,9 +69,9 @@ export function Ribbon({ tabs }: { tabs: RibbonTab[] }): ReactNode {
                     padding: '6px 4px',
                     border: 'none',
                     borderRadius: 4,
-                    background: 'transparent',
+                    background: it.active ? 'var(--ao-green-soft)' : 'transparent',
                     cursor: it.disabled ? 'default' : 'pointer',
-                    color: it.disabled ? 'var(--ao-text-3)' : 'var(--ao-text)',
+                    color: it.disabled ? 'var(--ao-text-3)' : it.active ? 'var(--ao-green-strong)' : 'var(--ao-text)',
                     fontSize: 12,
                     lineHeight: '13px'
                   }}

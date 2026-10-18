@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "noEmit": true,
+    "paths": {
+      "@alcina/updater/main": ["../../packages/updater/src/main.ts"]
+    }
+  },
+  "include": ["src/main/**/*", "src/preload/**/*.ts", "src/shared/**/*", "../../packages/updater/src/main.ts", "../../packages/updater/src/ipc.ts", "electron.vite.config.ts"]
+}
