@@ -98,8 +98,9 @@ export function Grid(props: GridProps): ReactNode {
     }
   }
 
-  const header = (label: string, width: number, sticky: boolean, on: boolean): ReactNode => (
+  const header = (label: string, width: number, sticky: boolean, on: boolean, k: string | number): ReactNode => (
     <div
+      key={k}
       style={{
         width,
         height: H,
@@ -126,12 +127,12 @@ export function Grid(props: GridProps): ReactNode {
     <div tabIndex={0} onKeyDown={onKeyDown} style={{ height: '100%', overflow: 'auto', outline: 'none', background: 'var(--ao-bg)' }}>
       <div style={{ width: RNW + cols * W, minWidth: '100%' }}>
         <div style={{ display: 'flex', position: 'sticky', top: 0, zIndex: 2 }}>
-          {header('', RNW, true, false)}
-          {Array.from({ length: cols }, (_, c) => header(colToLetter(c), W, false, c >= c1 && c <= c2))}
+          {header('', RNW, true, false, 'corner')}
+          {Array.from({ length: cols }, (_, c) => header(colToLetter(c), W, false, c >= c1 && c <= c2, c))}
         </div>
         {Array.from({ length: rows }, (_, r) => (
           <div key={r} style={{ display: 'flex' }}>
-            {header(String(r + 1), RNW, true, r >= r1 && r <= r2)}
+            {header(String(r + 1), RNW, true, r >= r1 && r <= r2, 'rn')}
             {Array.from({ length: cols }, (_, c) => {
               const st = styles[cellKey(r, c)]
               const v = engine.getValue(r, c)
