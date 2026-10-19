@@ -20,8 +20,8 @@ export function newDeck(): Deck {
         id: uid('s'),
         background: '#ffffff',
         elements: [
-          { id: uid('e'), type: 'text', x: 80, y: 180, w: 800, h: 110, text: 'Título da apresentação', fontSize: 44, bold: true, color: '#0f7a34', align: 'center' },
-          { id: uid('e'), type: 'text', x: 80, y: 300, w: 800, h: 60, text: 'Subtítulo — Alcina Dados TI', fontSize: 22, color: '#5c6e62', align: 'center' }
+          { id: uid('e'), type: 'text', x: 80, y: 180, w: 800, h: 110, text: 'Clique para adicionar um título', fontSize: 44, bold: true, color: '#0f7a34', align: 'center' },
+          { id: uid('e'), type: 'text', x: 80, y: 300, w: 800, h: 60, text: 'Clique para adicionar um subtítulo', fontSize: 22, color: '#5c6e62', align: 'center' }
         ]
       }
     ]
@@ -32,7 +32,9 @@ export function newElement(type: ElementType, image?: string): SlideElement {
   const base = { id: uid('e'), x: SLIDE_W / 2 - 150, y: SLIDE_H / 2 - 60, w: 300, h: 120 }
   if (type === 'text') return { ...base, type, text: 'Texto', fontSize: 20, color: '#222222', align: 'left' }
   if (type === 'image') return { ...base, type, w: 320, h: 200, image }
-  return { ...base, type, fill: type === 'ellipse' ? '#c79a2a' : '#0f7a34' }
+  if (type === 'line') return { ...base, type, h: 8, stroke: '#0f7a34', strokeWidth: 3 }
+  if (type === 'arrow') return { ...base, type, h: 40, stroke: '#0f7a34', strokeWidth: 3 }
+  return { ...base, type, fill: type === 'ellipse' || type === 'triangle' ? '#c79a2a' : '#0f7a34' }
 }
 
 export function mapSlide(deck: Deck, i: number, fn: (s: Slide) => Slide): Deck {

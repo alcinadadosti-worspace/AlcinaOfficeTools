@@ -1,7 +1,8 @@
 // Canvas de edição de um slide: selecionar, mover, redimensionar e editar texto.
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { type Slide, type SlideElement, SLIDE_W, SLIDE_H } from '../../shared/deck'
+import { type Slide, type SlideElement, SLIDE_W, SLIDE_H, isShape } from '../../shared/deck'
 import { boxStyle } from './SlideView'
+import { ShapeSvg } from './shapes'
 
 interface DragState {
   id: string
@@ -103,6 +104,8 @@ export function SlideCanvas({
                   />
                 ) : el.type === 'text' ? (
                   el.text
+                ) : isShape(el.type) ? (
+                  <ShapeSvg el={el} />
                 ) : null}
                 {sel && <div onPointerDown={(e) => startDrag(e, el, 'resize')} style={{ position: 'absolute', right: -5, bottom: -5, width: 11, height: 11, background: 'var(--ao-green)', border: '1px solid #fff', borderRadius: 2, cursor: 'nwse-resize' }} />}
               </div>

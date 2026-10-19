@@ -80,13 +80,15 @@ app.whenReady().then(() => {
       for (const el of s.elements) {
         const pos = { x: el.x / U, y: el.y / U, w: el.w / U, h: el.h / U }
         if (el.type === 'text') {
-          slide.addText(el.text ?? '', { ...pos, fontSize: el.fontSize ?? 18, bold: el.bold, italic: el.italic, color: hex(el.color ?? '#222222'), align: el.align ?? 'left', valign: 'top' })
-        } else if (el.type === 'rect') {
-          slide.addShape(pres.ShapeType.rect, { ...pos, fill: { color: hex(el.fill ?? '#0F7A34') } })
-        } else if (el.type === 'ellipse') {
-          slide.addShape(pres.ShapeType.ellipse, { ...pos, fill: { color: hex(el.fill ?? '#0F7A34') } })
+          slide.addText(el.text ?? '', { ...pos, fontSize: el.fontSize ?? 18, bold: el.bold, italic: el.italic, fontFace: el.fontFamily, color: hex(el.color ?? '#222222'), align: el.align ?? 'left', valign: 'top' })
         } else if (el.type === 'image' && el.image) {
           slide.addImage({ data: el.image, ...pos })
+        } else if (el.type === 'line' || el.type === 'arrow') {
+          const st = el.type === 'arrow' ? pres.ShapeType.rightArrow : pres.ShapeType.line
+          slide.addShape(st, { ...pos, line: { color: hex(el.stroke ?? el.fill ?? '#0F7A34'), width: el.strokeWidth ?? 3 } })
+        } else {
+          const st = el.type === 'rounded' ? pres.ShapeType.roundRect : el.type === 'ellipse' ? pres.ShapeType.ellipse : el.type === 'triangle' ? pres.ShapeType.triangle : pres.ShapeType.rect
+          slide.addShape(st, { ...pos, fill: { color: hex(el.fill ?? '#0F7A34') }, ...(el.stroke ? { line: { color: hex(el.stroke), width: el.strokeWidth ?? 1 } } : {}) })
         }
       }
     }

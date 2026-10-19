@@ -1,14 +1,10 @@
 // Renderização (somente leitura) de um slide, usada em miniaturas e na apresentação.
 import type { CSSProperties, ReactNode } from 'react'
-import { type Slide, type SlideElement, SLIDE_W, SLIDE_H } from '../../shared/deck'
+import { type Slide, type SlideElement, SLIDE_W, SLIDE_H, isShape } from '../../shared/deck'
+import { ShapeSvg } from './shapes'
 
 export function boxStyle(el: SlideElement): CSSProperties {
   const s: CSSProperties = { position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, boxSizing: 'border-box' }
-  if (el.type === 'rect') s.background = el.fill
-  if (el.type === 'ellipse') {
-    s.background = el.fill
-    s.borderRadius = '50%'
-  }
   if (el.type === 'image') {
     s.backgroundImage = `url(${el.image})`
     s.backgroundSize = 'contain'
@@ -18,8 +14,10 @@ export function boxStyle(el: SlideElement): CSSProperties {
   if (el.type === 'text') {
     s.color = el.color
     s.fontSize = el.fontSize
+    s.fontFamily = el.fontFamily || undefined
     s.fontWeight = el.bold ? 700 : 400
     s.fontStyle = el.italic ? 'italic' : 'normal'
+    s.textDecoration = el.underline ? 'underline' : 'none'
     s.textAlign = el.align
     s.whiteSpace = 'pre-wrap'
     s.overflow = 'hidden'
@@ -29,6 +27,12 @@ export function boxStyle(el: SlideElement): CSSProperties {
   return s
 }
 
+export function elementInner(el: SlideElement): ReactNode {
+  if (el.type === 'text') return el.text
+  if (isShape(el.type)) return <ShapeSvg el={el} />
+  return null
+}
+
 export function SlideView({ slide, width }: { slide: Slide; width: number }): ReactNode {
   const scale = width / SLIDE_W
   return (
@@ -36,7 +40,7 @@ export function SlideView({ slide, width }: { slide: Slide; width: number }): Re
       <div style={{ width: SLIDE_W, height: SLIDE_H, transform: `scale(${scale})`, transformOrigin: '0 0', position: 'absolute', left: 0, top: 0 }}>
         {slide.elements.map((el) => (
           <div key={el.id} style={boxStyle(el)}>
-            {el.type === 'text' ? el.text : null}
+            {elementInner(el)}
           </div>
         ))}
       </div>
