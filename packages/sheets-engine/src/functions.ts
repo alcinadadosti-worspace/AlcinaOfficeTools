@@ -362,5 +362,175 @@ reg(['MENOR', 'SMALL'], (a) => {
   return kk >= 1 && kk <= sorted.length ? sorted[kk - 1] : err('#NÚM!')
 })
 
+// ===== Ampliação da biblioteca (v0.4) =====
+
+function keepMask(len: number, a: ArgValue[], start: number): boolean[] {
+  const keep = new Array<boolean>(len).fill(true)
+  for (let k = start; k + 1 < a.length; k += 2) {
+    const rng = toList(a[k])
+    const cr = scalar(a[k + 1])
+    for (let i = 0; i < len; i++) if (!matches(rng[i] ?? null, cr)) keep[i] = false
+  }
+  return keep
+}
+function variance(ns: number[], sample: boolean): number {
+  const m = ns.reduce((s, x) => s + x, 0) / ns.length
+  const q = ns.reduce((s, x) => s + (x - m) * (x - m), 0)
+  return q / (sample ? ns.length - 1 : ns.length)
+}
+function parseDate(v: CellValue): Date | null {
+  if (typeof v === 'string') {
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.exec(v.trim())
+    if (m) {
+      let y = +m[3]
+      if (y < 100) y += 2000
+      const d = new Date(y, +m[2] - 1, +m[1])
+      return isNaN(d.getTime()) ? null : d
+    }
+  }
+  return null
+}
+function fmtDate(d: Date): string {
+  const p = (x: number): string => String(x).padStart(2, '0')
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`
+}
+
+// --- Matemáticas adicionais ---
+reg(['PI'], () => Math.PI)
+reg(['EXP'], (a) => { const n = n1(a); return isError(n) ? n : Math.exp(n) })
+reg(['LN'], (a) => { const n = n1(a); if (isError(n)) return n; return n <= 0 ? err('#NÚM!') : Math.log(n) })
+reg(['LOG'], (a) => { const n = n1(a); if (isError(n)) return n; if (n <= 0) return err('#NÚM!'); const b = a[1] !== undefined ? n1(a, 1) : 10; if (isError(b)) return b; return Math.log(n) / Math.log(b) })
+reg(['LOG10'], (a) => { const n = n1(a); if (isError(n)) return n; return n <= 0 ? err('#NÚM!') : Math.log10(n) })
+reg(['SINAL', 'SIGN'], (a) => { const n = n1(a); return isError(n) ? n : Math.sign(n) })
+reg(['FATORIAL', 'FACT'], (a) => { const n = n1(a); if (isError(n)) return n; const k = Math.trunc(n); if (k < 0) return err('#NÚM!'); let f = 1; for (let i = 2; i <= k; i++) f *= i; return f })
+reg(['TETO', 'ARREDMULTSUP', 'CEILING'], (a) => { const n = n1(a); if (isError(n)) return n; const s = a[1] !== undefined ? n1(a, 1) : 1; if (isError(s)) return s; return s === 0 ? 0 : Math.ceil(n / s) * s })
+reg(['ARREDMULTB', 'ARREDMULTINF', 'FLOOR'], (a) => { const n = n1(a); if (isError(n)) return n; const s = a[1] !== undefined ? n1(a, 1) : 1; if (isError(s)) return s; return s === 0 ? err('#DIV/0!') : Math.floor(n / s) * s })
+reg(['MARRED', 'MROUND'], (a) => { const n = n1(a); if (isError(n)) return n; const s = n1(a, 1); if (isError(s)) return s; return s === 0 ? 0 : Math.round(n / s) * s })
+reg(['ALEATÓRIO', 'ALEATORIO', 'RAND'], () => Math.random())
+reg(['ALEATÓRIOENTRE', 'ALEATORIOENTRE', 'RANDBETWEEN'], (a) => { const lo = n1(a); if (isError(lo)) return lo; const hi = n1(a, 1); if (isError(hi)) return hi; const l = Math.ceil(lo); const h = Math.floor(hi); return l + Math.floor(Math.random() * (h - l + 1)) })
+reg(['SOMARPRODUTO', 'SUMPRODUCT'], (a) => {
+  const lists = a.map(toList)
+  const len = lists.reduce((m, l) => Math.max(m, l.length), 0)
+  let s = 0
+  for (let i = 0; i < len; i++) {
+    let p = 1
+    for (const l of lists) {
+      const v = l[i]
+      if (isError(v)) return v
+      p *= typeof v === 'number' ? v : typeof v === 'boolean' ? (v ? 1 : 0) : 0
+    }
+    s += p
+  }
+  return s
+})
+reg(['SOMAQUAD', 'SUMSQ'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; return ns.reduce((s, x) => s + x * x, 0) })
+reg(['MDC', 'GCD'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; const g = (x: number, y: number): number => (y ? g(y, x % y) : x); return ns.map((x) => Math.abs(Math.trunc(x))).reduce((x, y) => g(x, y), 0) })
+reg(['MMC', 'LCM'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; if (!ns.length) return err('#NÚM!'); const g = (x: number, y: number): number => (y ? g(y, x % y) : x); return ns.map((x) => Math.abs(Math.trunc(x))).reduce((x, y) => (x && y ? Math.abs(x * y) / g(x, y) : 0)) })
+
+// --- Estatística condicional e descritiva ---
+reg(['MÉDIASE', 'MEDIASE', 'AVERAGEIF'], (a) => {
+  const range = asRange(a[0]); const crit = scalar(a[1]); const avg = a[2] !== undefined ? asRange(a[2]) : range
+  let s = 0; let c = 0
+  for (let i = 0; i < range.length; i++) {
+    if (matches(range[i], crit)) { const v = avg[i]; if (isError(v)) return v; if (typeof v === 'number') { s += v; c++ } else if (typeof v === 'boolean') { s += v ? 1 : 0; c++ } }
+  }
+  return c ? s / c : err('#DIV/0!')
+})
+reg(['MÉDIASES', 'MEDIASES', 'AVERAGEIFS'], (a) => {
+  const avg = toList(a[0]); const keep = keepMask(avg.length, a, 1)
+  let s = 0; let c = 0
+  for (let i = 0; i < avg.length; i++) { if (!keep[i]) continue; const v = avg[i]; if (isError(v)) return v; if (typeof v === 'number') { s += v; c++ } else if (typeof v === 'boolean') { s += v ? 1 : 0; c++ } }
+  return c ? s / c : err('#DIV/0!')
+})
+reg(['MÁXIMOSES', 'MAXIMOSES', 'MAXIFS'], (a) => {
+  const vals = toList(a[0]); const keep = keepMask(vals.length, a, 1); const picked: number[] = []
+  for (let i = 0; i < vals.length; i++) { if (!keep[i]) continue; const v = vals[i]; if (isError(v)) return v; if (typeof v === 'number') picked.push(v); else if (typeof v === 'boolean') picked.push(v ? 1 : 0) }
+  return picked.length ? Math.max(...picked) : 0
+})
+reg(['MÍNIMOSES', 'MINIMOSES', 'MINIFS'], (a) => {
+  const vals = toList(a[0]); const keep = keepMask(vals.length, a, 1); const picked: number[] = []
+  for (let i = 0; i < vals.length; i++) { if (!keep[i]) continue; const v = vals[i]; if (isError(v)) return v; if (typeof v === 'number') picked.push(v); else if (typeof v === 'boolean') picked.push(v ? 1 : 0) }
+  return picked.length ? Math.min(...picked) : 0
+})
+reg(['CONT.VAZIO', 'CONT.VAZIAS', 'COUNTBLANK'], (a) => flatten(a).filter((v) => v === null || v === '').length)
+reg(['MED', 'MEDIANA', 'MEDIAN'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; if (!ns.length) return err('#NÚM!'); const s = [...ns].sort((x, y) => x - y); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2 })
+reg(['MODO', 'MODO.ÚNICO', 'MODO.UNICO', 'MODE'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; const cnt = new Map<number, number>(); let best: number | null = null; let bc = 1; for (const x of ns) { const c = (cnt.get(x) ?? 0) + 1; cnt.set(x, c); if (c > bc) { bc = c; best = x } } return best === null ? err('#N/D') : best })
+reg(['DESVPAD', 'DESVPAD.A', 'DESVPADA', 'STDEV'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; return ns.length > 1 ? Math.sqrt(variance(ns, true)) : err('#DIV/0!') })
+reg(['DESVPADP', 'DESVPAD.P', 'STDEVP'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; return ns.length ? Math.sqrt(variance(ns, false)) : err('#DIV/0!') })
+reg(['VAR', 'VAR.A', 'VARA'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; return ns.length > 1 ? variance(ns, true) : err('#DIV/0!') })
+reg(['VARP', 'VAR.P'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; return ns.length ? variance(ns, false) : err('#DIV/0!') })
+
+// --- Lógicas e de informação ---
+reg(['VERDADEIRO', 'TRUE'], () => true)
+reg(['FALSO', 'FALSE'], () => false)
+reg(['XOU', 'XOR'], (a) => { let t = 0; for (const v of flatten(a)) { const b = toBool(v); if (isError(b)) return b; if (b) t++ } return t % 2 === 1 })
+reg(['SE.NÃO.DISP', 'SE.NAO.DISP', 'IFNA'], (a) => { const v = scalar(a[0]); return isError(v) && v.error === '#N/D' ? scalar(a[1] ?? null) : v })
+reg(['ÉERROS', 'EERROS', 'ISERROR'], (a) => isError(scalar(a[0])))
+reg(['ÉERRO', 'EERRO', 'ISERR'], (a) => { const v = scalar(a[0]); return isError(v) && v.error !== '#N/D' })
+reg(['É.NÃO.DISP', 'ENAODISP', 'ISNA'], (a) => { const v = scalar(a[0]); return isError(v) && v.error === '#N/D' })
+reg(['ÉNÚM', 'ENUM', 'ISNUMBER'], (a) => typeof scalar(a[0]) === 'number')
+reg(['ÉTEXTO', 'ETEXTO', 'ISTEXT'], (a) => typeof scalar(a[0]) === 'string')
+reg(['ÉCÉL.VAZIA', 'ECELVAZIA', 'ISBLANK'], (a) => { const v = scalar(a[0]); return v === null || v === '' })
+reg(['ÉLÓGICO', 'ELOGICO', 'ISLOGICAL'], (a) => typeof scalar(a[0]) === 'boolean')
+reg(['NÃO.DISP', 'NAO.DISP', 'NA'], () => err('#N/D'))
+
+// --- Texto adicionais ---
+reg(['PRI.MAIÚSCULA', 'PRI.MAIUSCULA', 'PROPER'], (a) => toText(scalar(a[0])).toLowerCase().replace(/\b\p{L}/gu, (ch) => ch.toUpperCase()))
+reg(['REPETIR', 'REPT'], (a) => { const s = toText(scalar(a[0])); const n = n1(a, 1); if (isError(n)) return n; const k = Math.trunc(n); return k <= 0 ? '' : s.repeat(Math.min(k, 100000)) })
+reg(['EXATO', 'EXACT'], (a) => toText(scalar(a[0])) === toText(scalar(a[1])))
+reg(['VALOR', 'VALUE'], (a) => { const n = parseNumber(toText(scalar(a[0]))); return n === null ? err('#VALOR!') : n })
+reg(['SUBSTITUIR', 'SUBSTITUTE'], (a) => {
+  const s = toText(scalar(a[0])); const oldt = toText(scalar(a[1])); const newt = toText(scalar(a[2]))
+  if (oldt === '') return s
+  const inst = a[3] !== undefined ? n1(a, 3) : null
+  if (isError(inst)) return inst
+  if (inst === null) return s.split(oldt).join(newt)
+  let idx = -1; let count = 0; let from = 0
+  while ((idx = s.indexOf(oldt, from)) !== -1) { count++; if (count === inst) return s.slice(0, idx) + newt + s.slice(idx + oldt.length); from = idx + oldt.length }
+  return s
+})
+reg(['MUDAR', 'REPLACE'], (a) => { const s = toText(scalar(a[0])); const start = n1(a, 1); if (isError(start)) return start; const len = n1(a, 2); if (isError(len)) return len; const i = Math.max(0, Math.trunc(start) - 1); return s.slice(0, i) + toText(scalar(a[3])) + s.slice(i + Math.max(0, Math.trunc(len))) })
+reg(['LOCALIZAR', 'FIND'], (a) => { const sub = toText(scalar(a[0])); const s = toText(scalar(a[1])); const start = a[2] !== undefined ? n1(a, 2) : 1; if (isError(start)) return start; const i = s.indexOf(sub, Math.max(0, Math.trunc(start) - 1)); return i < 0 ? err('#VALOR!') : i + 1 })
+reg(['PROCURAR', 'SEARCH'], (a) => { const sub = toText(scalar(a[0])).toLowerCase(); const s = toText(scalar(a[1])).toLowerCase(); const start = a[2] !== undefined ? n1(a, 2) : 1; if (isError(start)) return start; const i = s.indexOf(sub, Math.max(0, Math.trunc(start) - 1)); return i < 0 ? err('#VALOR!') : i + 1 })
+reg(['TEXTOJUNTAR', 'TEXTJOIN'], (a) => { const delim = toText(scalar(a[0])); const ignore = toBool(scalar(a[1])); if (isError(ignore)) return ignore; const parts = flatten(a.slice(2)).filter((v) => !ignore || (v !== null && v !== '')).map(toText); return parts.join(delim) })
+reg(['TEXTO', 'TEXT'], (a) => {
+  const raw = scalar(a[0]); const fmt = toText(scalar(a[1]))
+  const n = toNumber(raw)
+  if (isError(n)) return toText(raw)
+  const pct = fmt.includes('%')
+  const grouping = fmt.includes(',')
+  const dot = fmt.split('.')[1]
+  const dec = dot ? (dot.match(/[0#]/g)?.length ?? 0) : 0
+  const opts: Intl.NumberFormatOptions = { minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: grouping }
+  if (pct) opts.style = 'percent'
+  return new Intl.NumberFormat('pt-BR', opts).format(n)
+})
+
+// --- Pesquisa adicionais ---
+reg(['ESCOLHER', 'CHOOSE'], (a) => { const i = n1(a, 0); if (isError(i)) return i; const idx = Math.trunc(i); return idx >= 1 && idx < a.length ? scalar(a[idx]) : err('#VALOR!') })
+reg(['PROCH', 'HLOOKUP'], (a) => {
+  const lookup = scalar(a[0]); const mat = matrixOf(a[1]); const row = n1(a, 2)
+  if (isError(row)) return row
+  const ri = Math.trunc(row) - 1
+  if (ri < 0 || ri >= mat.rows) return err('#REF!')
+  const approx = a[3] !== undefined && toBool(scalar(a[3])) === true
+  if (!approx) { for (let c = 0; c < mat.cols; c++) if (sameValue(lookup, mat.cells[0][c])) return mat.cells[ri][c]; return err('#N/D') }
+  let best = -1
+  for (let c = 0; c < mat.cols; c++) { if (cmpLookup(mat.cells[0][c], lookup) <= 0) best = c; else break }
+  return best >= 0 ? mat.cells[ri][best] : err('#N/D')
+})
+reg(['PROCX', 'XLOOKUP'], (a) => {
+  const lookup = scalar(a[0]); const look = toList(a[1]); const ret = toList(a[2])
+  for (let i = 0; i < look.length; i++) if (sameValue(lookup, look[i])) return ret[i] ?? err('#N/D')
+  return a[3] !== undefined ? scalar(a[3]) : err('#N/D')
+})
+
+// --- Data (texto dd/mm/aaaa) ---
+reg(['DATA', 'DATE'], (a) => { const y = n1(a, 0); if (isError(y)) return y; const m = n1(a, 1); if (isError(m)) return m; const d = n1(a, 2); if (isError(d)) return d; return fmtDate(new Date(Math.trunc(y), Math.trunc(m) - 1, Math.trunc(d))) })
+reg(['ANO', 'YEAR'], (a) => { const d = parseDate(scalar(a[0])); return d ? d.getFullYear() : err('#VALOR!') })
+reg(['MÊS', 'MES', 'MONTH'], (a) => { const d = parseDate(scalar(a[0])); return d ? d.getMonth() + 1 : err('#VALOR!') })
+reg(['DIA', 'DAY'], (a) => { const d = parseDate(scalar(a[0])); return d ? d.getDate() : err('#VALOR!') })
+reg(['DIA.DA.SEMANA', 'WEEKDAY'], (a) => { const d = parseDate(scalar(a[0])); return d ? d.getDay() + 1 : err('#VALOR!') })
+
 /** Lista de nomes de funções (para autocompletar / ajuda). */
 export const FUNCTION_NAMES = (): string[] => Object.keys(FUNCTIONS).sort((a, b) => a.localeCompare(b, 'pt-BR'))
