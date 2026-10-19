@@ -1,7 +1,7 @@
 // Exibição de relatório: tela com a página atual, visuais e abas de páginas.
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { Input, Menu, MenuItem, MenuList, MenuPopover, Tooltip } from '@fluentui/react-components'
-import { Add16Regular, ChevronLeft16Regular, ChevronRight16Regular, EyeOff16Regular } from '@fluentui/react-icons'
+import { Add16Regular, ArrowRight16Regular, ChevronLeft16Regular, ChevronRight16Regular, ClipboardPaste24Regular, Database24Regular, DocumentTable24Regular, EyeOff16Regular, Sparkle24Regular } from '@fluentui/react-icons'
 import type { FieldRef } from '@engine/vq/types'
 import { useDoc } from '../../state/doc'
 import { useUi } from '../../state/ui'
@@ -25,6 +25,8 @@ import {
 } from '../../actions/report'
 import type { PageDef } from '../../report/types'
 import { hexToRgba } from '../../util/fmt'
+import { getData } from '../../actions/commands'
+import { loadSample } from '../../actions/sample'
 
 export const FIELD_MIME = 'application/x-alcinabi-field'
 
@@ -37,6 +39,7 @@ export interface DraggedField {
 export function ReportView() {
   const pages = useDoc((s) => s.doc.report.pages)
   const theme = useDoc((s) => s.doc.report.theme)
+  const tableCount = useDoc((s) => s.doc.model.tables.length)
   const activeId = useUi((s) => s.activePageId)
   const selectedIds = useUi((s) => s.selectedVisualIds)
   const focusId = useUi((s) => s.focusVisualId)
@@ -191,6 +194,11 @@ export function ReportView() {
             )}
           </div>
         </div>
+        {tableCount === 0 && page.visuals.length === 0 && (
+          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none', padding: 20 }}>
+            <EmptyReportCard />
+          </div>
+        )}
       </div>
       <PageTabs pages={pages} activeId={page.id} />
     </div>
@@ -305,4 +313,39 @@ const navBtn: React.CSSProperties = {
   justifyContent: 'center',
   cursor: 'pointer',
   color: 'var(--ab-text-2)'
+}
+
+// Cartão de boas-vindas no relatório vazio (sem dados e sem visuais).
+function EmptyReportCard() {
+  const card = (icon: JSX.Element, title: string, accent: string, onClick: () => void) => (
+    <button
+      onClick={onClick}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '20px 10px', border: '1px solid var(--ab-border)', borderRadius: 8, background: '#ffffff', cursor: 'pointer' }}
+      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--ab-accent)')}
+      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = 'var(--ab-border)')}
+    >
+      <span style={{ width: 46, height: 46, borderRadius: 8, display: 'grid', placeItems: 'center', background: accent + '1f', color: accent }}>{icon}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ab-text)', textAlign: 'center' }}>{title}</span>
+    </button>
+  )
+  return (
+    <div style={{ pointerEvents: 'auto', width: 'min(680px, 100%)', textAlign: 'center' }}>
+      <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--ab-text)' }}>Adicionar dados ao relatório</div>
+      <div style={{ fontSize: 15, color: 'var(--ab-text-2)', margin: '6px 0 22px' }}>
+        Depois de carregados, seus dados aparecem no painel <b>Dados</b>.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+        {card(<DocumentTable24Regular />, 'Importar do Excel', '#107c41', () => void getData('excel'))}
+        {card(<Database24Regular />, 'Importar de banco de dados', '#1a5fb4', () => void getData('database'))}
+        {card(<ClipboardPaste24Regular />, 'Colar em tabela em branco', '#9a6d0c', () => void getData('enterData'))}
+        {card(<Sparkle24Regular />, 'Dados de exemplo', '#0f7a34', () => void loadSample())}
+      </div>
+      <button
+        onClick={() => void getData('blank')}
+        style={{ marginTop: 18, border: 'none', background: 'transparent', color: 'var(--ab-accent)', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+      >
+        Obter dados de outra fonte <ArrowRight16Regular />
+      </button>
+    </div>
+  )
 }
