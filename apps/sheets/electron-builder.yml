@@ -1,5 +1,6 @@
 appId: com.alcina.sheets
 productName: AlcinaSheets
+executableName: alcina-sheets
 directories:
   output: release
   buildResources: build

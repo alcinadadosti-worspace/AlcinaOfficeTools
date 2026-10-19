@@ -1,5 +1,6 @@
 appId: com.alcina.point
 productName: AlcinaPoint
+executableName: alcina-point
 directories:
   output: release
   buildResources: build

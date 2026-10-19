@@ -1,5 +1,6 @@
 appId: com.alcina.bi
 productName: AlcinaBi
+executableName: alcina-bi
 directories:
   output: release
   buildResources: build

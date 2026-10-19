@@ -1,5 +1,6 @@
 appId: com.alcina.office
 productName: Alcina Office
+executableName: alcina-office
 directories:
   output: release
   buildResources: build

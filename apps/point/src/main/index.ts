@@ -3,8 +3,9 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type FileFilter } fro
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import pptxgen from 'pptxgenjs'
+import JSZip from 'jszip'
 import { setupAutoUpdates } from '@alcina/updater/main'
-import { type Deck, SLIDE_W, SLIDE_H, UNITS_PER_INCH as U } from '../shared/deck'
+import { type Deck, type Slide, type SlideElement, type ElementType, SLIDE_W, SLIDE_H, UNITS_PER_INCH as U } from '../shared/deck'
 
 const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://alcina-office-updates.onrender.com/point'
 
@@ -15,6 +16,34 @@ interface DialogOpts {
 
 function hex(c: string): string {
   return c.replace('#', '').toUpperCase()
+}
+
+// --- Leitura de .pptx (OOXML, via jszip) ---
+function joinParas(sp: string): string {
+  const paras = sp.split(/<a:p>/).slice(1)
+  return paras.map((p) => [...p.matchAll(/<a:t>([\s\S]*?)<\/a:t>/g)].map((x) => x[1]).join('')).join('\n')
+}
+function decodeXml(s: string): string {
+  return s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
+}
+function shapeFromPrst(prst: string): ElementType {
+  switch (prst) {
+    case 'ellipse':
+    case 'oval':
+      return 'ellipse'
+    case 'roundRect':
+      return 'rounded'
+    case 'triangle':
+    case 'isoscelesTriangle':
+      return 'triangle'
+    case 'line':
+    case 'straightConnector1':
+      return 'line'
+    case 'rightArrow':
+      return 'arrow'
+    default:
+      return 'rect'
+  }
 }
 
 function createWindow(): BrowserWindow {
@@ -94,6 +123,66 @@ app.whenReady().then(() => {
     }
     const buf = (await pres.write({ outputType: 'nodebuffer' })) as Buffer
     await fs.writeFile(path, buf)
+  })
+
+  ipcMain.handle('pptx:parse', async (_e, path: string) => {
+    const buf = await fs.readFile(path)
+    const zip = await JSZip.loadAsync(buf)
+    const presXml = (await zip.file('ppt/presentation.xml')?.async('string')) ?? ''
+    const szM = /<p:sldSz[^>]*cx="(\d+)"[^>]*cy="(\d+)"/.exec(presXml)
+    const CX = szM ? +szM[1] : 12192000
+    const CY = szM ? +szM[2] : 6858000
+    const slideFiles = Object.keys(zip.files)
+      .filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+      .sort((a, b) => parseInt(a.replace(/\D/g, ''), 10) - parseInt(b.replace(/\D/g, ''), 10))
+    let seq = 0
+    const uid = (p: string): string => `${p}_${Date.now().toString(36)}${(seq++).toString(36)}`
+    const sx = (v: number): number => Math.round((v / CX) * SLIDE_W)
+    const sy = (v: number): number => Math.round((v / CY) * SLIDE_H)
+    const slides: Slide[] = []
+    for (const sf of slideFiles) {
+      const xml = (await zip.file(sf)?.async('string')) ?? ''
+      const relsXml = (await zip.file(sf.replace('slides/', 'slides/_rels/') + '.rels')?.async('string')) ?? ''
+      const rels: Record<string, string> = {}
+      for (const m of relsXml.matchAll(/Id="(rId\d+)"[^>]*Target="([^"]+)"/g)) rels[m[1]] = m[2]
+      const elements: SlideElement[] = []
+      for (const m of xml.matchAll(/<p:sp>([\s\S]*?)<\/p:sp>/g)) {
+        const b = m[1]
+        const off = /<a:off x="(-?\d+)" y="(-?\d+)"/.exec(b)
+        const ext = /<a:ext cx="(\d+)" cy="(\d+)"/.exec(b)
+        const x = off ? sx(+off[1]) : 80
+        const y = off ? sy(+off[2]) : 80
+        const w = ext ? sx(+ext[1]) : 300
+        const h = ext ? sy(+ext[2]) : 120
+        const text = decodeXml(joinParas(b)).trim()
+        if (text) {
+          const szr = /<a:rPr[^>]*\ssz="(\d+)"/.exec(b)
+          const algn = /algn="(ctr|l|r|just)"/.exec(b)
+          const colr = /<a:solidFill><a:srgbClr val="([0-9A-Fa-f]{6})"/.exec(b)
+          elements.push({ id: uid('e'), type: 'text', x, y, w, h, text, fontSize: szr ? Math.round(+szr[1] / 100) : 18, bold: /<a:rPr[^>]*\sb="1"/.test(b), color: colr ? `#${colr[1]}` : '#222222', align: algn ? (algn[1] === 'ctr' ? 'center' : algn[1] === 'r' ? 'right' : 'left') : 'left' })
+        } else {
+          const prst = /<a:prstGeom prst="(\w+)"/.exec(b)
+          const fill = /<a:solidFill><a:srgbClr val="([0-9A-Fa-f]{6})"/.exec(b)
+          elements.push({ id: uid('e'), type: shapeFromPrst(prst ? prst[1] : 'rect'), x, y, w, h, fill: fill ? `#${fill[1]}` : '#0F7A34' })
+        }
+      }
+      for (const m of xml.matchAll(/<p:pic>([\s\S]*?)<\/p:pic>/g)) {
+        const b = m[1]
+        const embed = /<a:blip[^>]*r:embed="(rId\d+)"/.exec(b)
+        if (!embed || !rels[embed[1]]) continue
+        const target = rels[embed[1]].replace('../', 'ppt/')
+        const file = zip.file(target)
+        if (!file) continue
+        const off = /<a:off x="(-?\d+)" y="(-?\d+)"/.exec(b)
+        const ext = /<a:ext cx="(\d+)" cy="(\d+)"/.exec(b)
+        const ex = (target.split('.').pop() ?? 'png').toLowerCase()
+        const mime = ex === 'jpg' || ex === 'jpeg' ? 'image/jpeg' : ex === 'svg' ? 'image/svg+xml' : `image/${ex}`
+        elements.push({ id: uid('e'), type: 'image', x: off ? sx(+off[1]) : 80, y: off ? sy(+off[2]) : 80, w: ext ? sx(+ext[1]) : 320, h: ext ? sy(+ext[2]) : 200, image: `data:${mime};base64,${await file.async('base64')}` })
+      }
+      slides.push({ id: uid('s'), background: '#ffffff', elements })
+    }
+    if (!slides.length) slides.push({ id: uid('s'), background: '#ffffff', elements: [] })
+    return { version: 1, app: 'alcina-point', slides } as Deck
   })
 
   createWindow()

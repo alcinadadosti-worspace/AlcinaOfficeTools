@@ -31,6 +31,14 @@ export async function exportPptx(deck: Deck, suggested: string): Promise<string 
   return path
 }
 
+export async function importPptx(): Promise<{ deck: Deck; name: string } | null> {
+  const path = await window.alcinaFiles.openDialog({ filters: PPTX })
+  if (!path) return null
+  const deck = await window.alcinaPptx.parse(path)
+  const name = (path.split(/[\\/]/).pop() ?? 'Apresentação').replace(/\.pptx$/i, '')
+  return { deck, name }
+}
+
 export async function pickImage(): Promise<string | null> {
   const path = await window.alcinaFiles.openDialog({ filters: IMG })
   if (!path) return null

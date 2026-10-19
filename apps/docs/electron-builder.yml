@@ -1,5 +1,6 @@
 appId: com.alcina.docs
 productName: AlcinaDocs
+executableName: alcina-docs
 directories:
   output: release
   buildResources: build

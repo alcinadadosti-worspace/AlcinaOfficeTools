@@ -16,7 +16,7 @@ const alias = {
 export default defineConfig({
   main: {
     resolve: { alias },
-    build: { rollupOptions: { external: ['electron-updater', 'pptxgenjs'] } }
+    build: { rollupOptions: { external: ['electron-updater', 'pptxgenjs', 'jszip'] } }
   },
   preload: {
     resolve: { alias }

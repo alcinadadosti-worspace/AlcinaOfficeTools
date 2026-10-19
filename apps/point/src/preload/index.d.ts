@@ -21,6 +21,7 @@ declare global {
     }
     alcinaPptx: {
       build(deck: Deck, path: string): Promise<void>
+      parse(path: string): Promise<Deck>
     }
   }
 }

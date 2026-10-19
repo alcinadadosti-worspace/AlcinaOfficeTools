@@ -18,7 +18,8 @@ import {
   TextAlignCenter24Regular,
   TextAlignRight24Regular,
   Play24Regular,
-  ArrowDownload24Regular
+  ArrowDownload24Regular,
+  FolderOpen24Regular
 } from '@fluentui/react-icons'
 import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { getUpdater } from '@alcina/updater/renderer'
@@ -28,7 +29,7 @@ import { newDeck, newSlide, newElement, mapSlide, mapElement, uid } from './mode
 import { SlideView } from './SlideView'
 import { SlideCanvas } from './SlideCanvas'
 import { Present } from './Present'
-import { saveDeck, openDeck, exportPptx, pickImage, baseName } from './io'
+import { saveDeck, openDeck, exportPptx, importPptx, pickImage, baseName } from './io'
 
 const FONTS = ['', 'Arial', 'Calibri', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana']
 const TEXT_COLORS: [string, string][] = [['#16211a', 'Preto'], ['#ffffff', 'Branco'], ['#0f7a34', 'Verde'], ['#9a6d0c', 'Dourado'], ['#b64a38', 'Vermelho'], ['#1a5fb4', 'Azul'], ['#6d3fb0', 'Roxo']]
@@ -144,6 +145,7 @@ export function App(): ReactNode {
           items: [
             { key: 'new', label: 'Novo', icon: <TextT24Regular />, onClick: () => { setDeck(newDeck()); setCurrent(0); setSelId(null); setPath(null) } },
             { key: 'open', label: 'Abrir', icon: <Image24Regular />, onClick: run(async () => { const r = await openDeck(); if (r) { setDeck(r.deck); setCurrent(0); setSelId(null); setPath(r.path) } }) },
+            { key: 'importpptx', label: 'Abrir PPTX', icon: <FolderOpen24Regular />, onClick: run(async () => { const r = await importPptx(); if (r) { setDeck(r.deck); setCurrent(0); setSelId(null); setPath(null) } }) },
             { key: 'save', label: 'Salvar', icon: <ArrowDownload24Regular />, onClick: run(async () => { const p = await saveDeck(deck, name); if (p) setPath(p) }) }
           ]
         },

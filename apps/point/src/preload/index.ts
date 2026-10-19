@@ -31,5 +31,6 @@ contextBridge.exposeInMainWorld('alcinaFiles', {
 })
 
 contextBridge.exposeInMainWorld('alcinaPptx', {
-  build: (deck: Deck, path: string) => ipcRenderer.invoke('pptx:build', deck, path)
+  build: (deck: Deck, path: string) => ipcRenderer.invoke('pptx:build', deck, path),
+  parse: (path: string) => ipcRenderer.invoke('pptx:parse', path)
 })

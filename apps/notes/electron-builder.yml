@@ -1,5 +1,6 @@
 appId: com.alcina.notes
 productName: AlcinaNotes
+executableName: alcina-notes
 directories:
   output: release
   buildResources: build
