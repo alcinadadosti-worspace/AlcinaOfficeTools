@@ -24,7 +24,7 @@ import {
 import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
-import { type ElementType, type SlideElement, type Deck, isShape } from '../../shared/deck'
+import { type ElementType, type SlideElement, type Deck, isShape, SLIDE_W, SLIDE_H } from '../../shared/deck'
 import { newDeck, newSlide, newElement, mapSlide, mapElement, uid } from './model'
 import { SlideView } from './SlideView'
 import { SlideCanvas } from './SlideCanvas'
@@ -129,6 +129,16 @@ export function App(): ReactNode {
   const addSlide = (): void => { const s = newSlide(); setDeck((d) => ({ ...d, slides: [...d.slides.slice(0, idx + 1), s, ...d.slides.slice(idx + 1)] })); setCurrent(idx + 1); setSelId(null) }
   const dupSlide = (): void => { const src = deck.slides[idx]; const copy = { id: uid('s'), background: src.background, elements: src.elements.map((e) => ({ ...e, id: uid('e') })) }; setDeck((d) => ({ ...d, slides: [...d.slides.slice(0, idx + 1), copy, ...d.slides.slice(idx + 1)] })); setCurrent(idx + 1); setSelId(null) }
   const delSlide = (): void => { if (deck.slides.length <= 1) return; setDeck((d) => ({ ...d, slides: d.slides.filter((_, j) => j !== idx) })); setCurrent(Math.max(0, idx - 1)); setSelId(null) }
+  const moveSlide = (dir: -1 | 1): void => {
+    const j = idx + dir
+    if (j < 0 || j >= deck.slides.length) return
+    setDeck((d) => { const s = [...d.slides]; const [m] = s.splice(idx, 1); s.splice(j, 0, m); return { ...d, slides: s } })
+    setCurrent(j)
+  }
+  const centerEl = (axis: 'x' | 'y'): void => {
+    if (!selEl) return
+    changeEl(selEl.id, axis === 'x' ? { x: Math.round((SLIDE_W - selEl.w) / 2) } : { y: Math.round((SLIDE_H - selEl.h) / 2) })
+  }
 
   const run = (fn: () => Promise<unknown>) => (): void => void fn()
   const colorMenu = (apply: (c: string) => void, list: [string, string][]): ReactNode => (
@@ -155,6 +165,8 @@ export function App(): ReactNode {
             { key: 'add', label: 'Novo slide', icon: <SlideAdd24Regular />, onClick: addSlide },
             { key: 'dup', label: 'Duplicar', icon: <Copy24Regular />, onClick: dupSlide },
             { key: 'del', label: 'Excluir', icon: <Delete24Regular />, disabled: deck.slides.length <= 1, onClick: delSlide },
+            { key: 'mup', label: 'Mover ↑', icon: txt('↑'), disabled: idx <= 0, onClick: () => moveSlide(-1) },
+            { key: 'mdn', label: 'Mover ↓', icon: txt('↓'), disabled: idx >= deck.slides.length - 1, onClick: () => moveSlide(1) },
             { key: 'bg', label: 'Fundo', icon: swatch(slide.background), menu: colorMenu(setBg, SLIDE_BGS) }
           ]
         },
@@ -199,7 +211,9 @@ export function App(): ReactNode {
             { key: 'front', label: 'Para frente', icon: txt('⬆'), disabled: !selId, onClick: () => arrange('front') },
             { key: 'back', label: 'Para trás', icon: txt('⬇'), disabled: !selId, onClick: () => arrange('back') },
             { key: 'eldup', label: 'Duplicar', icon: <Copy24Regular />, disabled: !selId, onClick: duplicate },
-            { key: 'eldel', label: 'Excluir', icon: <Delete24Regular />, disabled: !selId, onClick: del }
+            { key: 'eldel', label: 'Excluir', icon: <Delete24Regular />, disabled: !selId, onClick: del },
+            { key: 'cx', label: 'Centralizar H', icon: txt('↔'), disabled: !selId, onClick: () => centerEl('x') },
+            { key: 'cy', label: 'Centralizar V', icon: txt('↕'), disabled: !selId, onClick: () => centerEl('y') }
           ]
         },
         {
