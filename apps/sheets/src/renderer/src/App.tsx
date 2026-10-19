@@ -75,6 +75,7 @@ export function App(): ReactNode {
   const [cf, setCf] = useState<{ open: boolean; op: CondRule['op']; v1: string; v2: string; fill: string }>({ open: false, op: '>', v1: '', v2: '', fill: '#fdf3d0' })
   const [filter, setFilter] = useState<{ r1: number; r2: number; cols: Record<number, string[]> } | null>(null)
   const [filterDlg, setFilterDlg] = useState<{ col: number; values: string[]; checked: Record<string, boolean> } | null>(null)
+  const [valDlg, setValDlg] = useState<{ open: boolean; list: string }>({ open: false, list: '' })
 
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
@@ -157,6 +158,25 @@ export function App(): ReactNode {
     setFilterDlg(null)
   }
   const clearFilter = (): void => { setFilter(null); setFilterDlg(null) }
+
+  const validations = sheet.validations ?? []
+  const openValidation = (): void => {
+    const existing = validations.find((x) => sel.ar >= Math.min(x.r1, x.r2) && sel.ar <= Math.max(x.r1, x.r2) && sel.ac >= Math.min(x.c1, x.c2) && sel.ac <= Math.max(x.c1, x.c2))
+    setValDlg({ open: true, list: existing ? existing.list.join(', ') : '' })
+  }
+  const applyValidation = (): void => {
+    const list = valDlg.list.split(',').map((s) => s.trim()).filter((s, i, a) => s !== '' && a.indexOf(s) === i)
+    setSheets((arr) => arr.map((sh, i) => {
+      if (i !== idx) return sh
+      const kept = (sh.validations ?? []).filter((x) => !(Math.min(x.r1, x.r2) <= r2 && Math.max(x.r1, x.r2) >= r1 && Math.min(x.c1, x.c2) <= c2 && Math.max(x.c1, x.c2) >= c1))
+      return { ...sh, validations: list.length ? [...kept, { r1, c1, r2, c2, list }] : kept }
+    }))
+    setValDlg({ open: false, list: '' })
+  }
+  const onSetCellValue = (r: number, c: number, text: string): void => {
+    engine.setCell(r, c, text)
+    bump()
+  }
   const hiddenRows = ((): Set<number> | undefined => {
     if (!filter) return undefined
     const entries = Object.entries(filter.cols)
@@ -500,7 +520,8 @@ export function App(): ReactNode {
           label: 'Dados',
           items: [
             { key: 'filter', label: 'Filtrar coluna', icon: txtIcon('▼'), onClick: openFilter },
-            { key: 'clearfilter', label: 'Limpar filtro', icon: txtIcon('✕'), disabled: !filter, onClick: clearFilter }
+            { key: 'clearfilter', label: 'Limpar filtro', icon: txtIcon('✕'), disabled: !filter, onClick: clearFilter },
+            { key: 'valid', label: 'Validação de dados', icon: txtIcon('☑'), onClick: openValidation }
           ]
         }
       ]
@@ -534,7 +555,7 @@ export function App(): ReactNode {
         </div>
 
         <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-          <Grid engine={engine} styles={styles} merges={merges} condFormats={condFormats} hiddenRows={hiddenRows} rows={ROWS} cols={COLS} rev={rev} freezeR={freeze.r} freezeC={freeze.c} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
+          <Grid engine={engine} styles={styles} merges={merges} condFormats={condFormats} hiddenRows={hiddenRows} validations={validations} onSetValue={onSetCellValue} rows={ROWS} cols={COLS} rev={rev} freezeR={freeze.r} freezeC={freeze.c} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
           <ChartLayer charts={charts} engine={engine} rev={rev} selId={selChart} onSelect={setSelChart} onChange={updateChart} onDelete={deleteChart} />
         </div>
 
@@ -638,6 +659,24 @@ export function App(): ReactNode {
             <DialogActions>
               <Button onClick={() => setFilterDlg(null)}>Cancelar</Button>
               <Button appearance="primary" onClick={applyFilter}>Aplicar</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      <Dialog open={valDlg.open} onOpenChange={(_, d) => setValDlg((v) => ({ ...v, open: d.open }))}>
+        <DialogSurface style={{ maxWidth: 420 }}>
+          <DialogBody>
+            <DialogTitle>Validação de dados (lista)</DialogTitle>
+            <DialogContent>
+              <Field label="Valores permitidos (separados por vírgula). Deixe vazio para remover a validação.">
+                <Input value={valDlg.list} onChange={(_, d) => setValDlg((v) => ({ ...v, list: d.value }))} placeholder="Ex.: Sim, Não, Talvez" />
+              </Field>
+              <div style={{ fontSize: 12, color: 'var(--ao-text-3)', marginTop: 8 }}>As células do intervalo ganham uma lista suspensa; valores fora da lista ficam com borda vermelha.</div>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setValDlg((v) => ({ ...v, open: false }))}>Cancelar</Button>
+              <Button appearance="primary" onClick={applyValidation}>Aplicar</Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>

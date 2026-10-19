@@ -1,7 +1,8 @@
 // Grade de células: seleção de intervalo, edição, estilos e teclado.
 import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
+import { Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from '@fluentui/react-components'
 import { type SheetEngine, type CellValue, colToLetter } from '@alcina/sheets-engine'
-import { cellKey, type CellStyle, type Merge, type CondRule } from './model'
+import { cellKey, type CellStyle, type Merge, type CondRule, type Validation } from './model'
 import { formatCell } from './format'
 
 const W = 94
@@ -26,6 +27,8 @@ export interface GridProps {
   merges?: Merge[]
   condFormats?: CondRule[]
   hiddenRows?: Set<number>
+  validations?: Validation[]
+  onSetValue?: (r: number, c: number, text: string) => void
   sel: Sel
   editing: string | null
   setSel: (s: Sel) => void
@@ -44,6 +47,7 @@ export function Grid(props: GridProps): ReactNode {
   const freezeC = props.freezeC ?? 0
   const condFormats = props.condFormats ?? []
   const hiddenRows = props.hiddenRows
+  const validations = props.validations ?? []
   const selRef = useRef(sel)
   selRef.current = sel
   const dragging = useRef(false)
@@ -216,6 +220,8 @@ export function Grid(props: GridProps): ReactNode {
               const inRange = r >= r1 && r <= r2 && c >= c1 && c <= c2
               const active = r === sel.ar && c === sel.ac
               const frozenCol = c < freezeC
+              const val = validations.length ? validations.find((x) => r >= Math.min(x.r1, x.r2) && r <= Math.max(x.r1, x.r2) && c >= Math.min(x.c1, x.c2) && c <= Math.max(x.c1, x.c2)) : undefined
+              const invalid = !!val && dv !== null && dv !== '' && !val.list.includes(String(dv))
               const align = st?.align ?? (numeric ? 'right' : 'left')
               const bc = 'var(--ao-text-2)'
               const cs: CSSProperties = {
@@ -237,7 +243,7 @@ export function Grid(props: GridProps): ReactNode {
                 borderBottom: st?.bb ? `1.5px solid ${bc}` : '1px solid var(--ao-border)',
                 borderTop: st?.bt ? `1.5px solid ${bc}` : undefined,
                 borderLeft: st?.bl ? `1.5px solid ${bc}` : undefined,
-                outline: active ? '2px solid var(--ao-green)' : inRange ? '1px solid var(--ao-green)' : 'none',
+                outline: active ? '2px solid var(--ao-green)' : invalid ? '1.5px solid #d14343' : inRange ? '1px solid var(--ao-green)' : 'none',
                 outlineOffset: -1,
                 overflow: 'hidden',
                 whiteSpace: st?.wrap ? 'normal' : 'nowrap',
@@ -288,6 +294,24 @@ export function Grid(props: GridProps): ReactNode {
                     <span style={{ color: '#b64a38', fontWeight: 600 }} title="O intervalo de derramamento não está vazio.">#DERRAM!</span>
                   ) : (
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatCell(dv, st)}</span>
+                  )}
+                  {active && editing === null && val && (
+                    <Menu>
+                      <MenuTrigger disableButtonEnhancement>
+                        <button onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()} title="Escolher da lista" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 16, border: 'none', borderLeft: '1px solid var(--ao-border)', background: 'var(--ao-green-soft)', color: 'var(--ao-green)', cursor: 'pointer', fontSize: 9, padding: 0 }}>
+                          ▾
+                        </button>
+                      </MenuTrigger>
+                      <MenuPopover>
+                        <MenuList>
+                          {val.list.map((v) => (
+                            <MenuItem key={v} onClick={() => props.onSetValue?.(r, c, v)}>
+                              {v || '(vazio)'}
+                            </MenuItem>
+                          ))}
+                        </MenuList>
+                      </MenuPopover>
+                    </Menu>
                   )}
                 </div>
               )

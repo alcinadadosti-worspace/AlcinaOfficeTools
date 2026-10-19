@@ -43,6 +43,15 @@ export interface CondRule {
   color?: string
 }
 
+/** Validação de dados: restringe o intervalo a uma lista de valores. */
+export interface Validation {
+  r1: number
+  c1: number
+  r2: number
+  c2: number
+  list: string[]
+}
+
 export type ChartType = 'column' | 'bar' | 'line' | 'pie'
 
 /** Gráfico flutuante sobre a grade, alimentado por um intervalo de células. */
@@ -67,6 +76,7 @@ export interface SheetDoc {
   merges: Merge[]
   charts: ChartObj[]
   condFormats: CondRule[]
+  validations: Validation[]
 }
 
 export interface SavedSheet {
@@ -76,6 +86,7 @@ export interface SavedSheet {
   merges?: Merge[]
   charts?: ChartObj[]
   condFormats?: CondRule[]
+  validations?: Validation[]
 }
 
 export interface SavedWorkbook {
@@ -89,11 +100,11 @@ export function cellKey(row: number, col: number): string {
 }
 
 export function newSheet(name: string): SheetDoc {
-  return { name, engine: new SheetEngine(), styles: {}, merges: [], charts: [], condFormats: [] }
+  return { name, engine: new SheetEngine(), styles: {}, merges: [], charts: [], condFormats: [], validations: [] }
 }
 
 export function serialize(sheets: SheetDoc[]): SavedWorkbook {
-  return { version: 1, app: 'alcina-sheets', sheets: sheets.map((s) => ({ name: s.name, cells: s.engine.entries(), styles: s.styles, merges: s.merges, charts: s.charts, condFormats: s.condFormats })) }
+  return { version: 1, app: 'alcina-sheets', sheets: sheets.map((s) => ({ name: s.name, cells: s.engine.entries(), styles: s.styles, merges: s.merges, charts: s.charts, condFormats: s.condFormats, validations: s.validations })) }
 }
 
 export function deserialize(data: SavedWorkbook): SheetDoc[] {
@@ -101,7 +112,7 @@ export function deserialize(data: SavedWorkbook): SheetDoc[] {
   const out = (data.sheets ?? []).map((s) => {
     const e = new SheetEngine()
     e.load(s.cells ?? [])
-    return { name: s.name, engine: e, styles: s.styles ?? {}, merges: s.merges ?? [], charts: s.charts ?? [], condFormats: s.condFormats ?? [] }
+    return { name: s.name, engine: e, styles: s.styles ?? {}, merges: s.merges ?? [], charts: s.charts ?? [], condFormats: s.condFormats ?? [], validations: s.validations ?? [] }
   })
   return out.length ? out : [newSheet('Planilha1')]
 }
