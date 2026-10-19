@@ -47,10 +47,10 @@ export async function exportDocx(api: EditorApi, suggested: string): Promise<str
   return path
 }
 
-export async function exportPdf(api: EditorApi, suggested: string): Promise<string | null> {
+export async function exportPdf(api: EditorApi, suggested: string, opts?: { header?: string; footer?: string; pageNumbers?: boolean }): Promise<string | null> {
   const path = await window.alcinaFiles.saveDialog({ filters: PDF, defaultPath: `${suggested}.pdf` })
   if (!path) return null
-  await window.alcinaDocx.printPdf(api.getPrintHtml(), path)
+  await window.alcinaDocx.printPdf(api.getPrintHtml(), path, opts)
   return path
 }
 

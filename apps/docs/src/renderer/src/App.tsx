@@ -67,6 +67,8 @@ export function App(): ReactNode {
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [version, setVersion] = useState('')
   const [layout, setLayout] = useState<{ margin: 'normal' | 'narrow' | 'wide'; orient: 'portrait' | 'landscape'; columns: 1 | 2 | 3 }>({ margin: 'normal', orient: 'portrait', columns: 1 })
+  const [pageSetup, setPageSetup] = useState<{ header: string; footer: string; pageNumbers: boolean }>({ header: '', footer: '', pageNumbers: false })
+  const [hfOpen, setHfOpen] = useState(false)
 
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
@@ -233,7 +235,8 @@ export function App(): ReactNode {
           items: [
             { key: 'margins', label: 'Margens', icon: txt('▭'), menu: <MenuList><MenuItem onClick={() => setLayout((l) => ({ ...l, margin: 'normal' }))}>Normais</MenuItem><MenuItem onClick={() => setLayout((l) => ({ ...l, margin: 'narrow' }))}>Estreitas</MenuItem><MenuItem onClick={() => setLayout((l) => ({ ...l, margin: 'wide' }))}>Largas</MenuItem></MenuList> },
             { key: 'orient', label: 'Orientação', icon: txt('⟳'), menu: <MenuList><MenuItem onClick={() => setLayout((l) => ({ ...l, orient: 'portrait' }))}>Retrato</MenuItem><MenuItem onClick={() => setLayout((l) => ({ ...l, orient: 'landscape' }))}>Paisagem</MenuItem></MenuList> },
-            { key: 'cols', label: 'Colunas', icon: txt('▥'), menu: <MenuList><MenuItem onClick={() => setLayout((l) => ({ ...l, columns: 1 }))}>Uma</MenuItem><MenuItem onClick={() => setLayout((l) => ({ ...l, columns: 2 }))}>Duas</MenuItem><MenuItem onClick={() => setLayout((l) => ({ ...l, columns: 3 }))}>Três</MenuItem></MenuList> }
+            { key: 'cols', label: 'Colunas', icon: txt('▥'), menu: <MenuList><MenuItem onClick={() => setLayout((l) => ({ ...l, columns: 1 }))}>Uma</MenuItem><MenuItem onClick={() => setLayout((l) => ({ ...l, columns: 2 }))}>Duas</MenuItem><MenuItem onClick={() => setLayout((l) => ({ ...l, columns: 3 }))}>Três</MenuItem></MenuList> },
+            { key: 'hf', label: 'Cabeçalho/Rodapé', icon: txt('≡'), onClick: () => setHfOpen(true) }
           ]
         }
       ]
@@ -255,7 +258,7 @@ export function App(): ReactNode {
           items: [
             { key: 'idocx', label: 'Abrir Word', icon: <DocumentTable24Regular />, onClick: run(async (a) => { const p = await importDocx(a); if (p) setPath(null) }) },
             { key: 'edocx', label: 'Salvar Word', icon: <ArrowDownload24Regular />, onClick: run(async (a) => { await exportDocx(a, name) }) },
-            { key: 'epdf', label: 'Exportar PDF', icon: <DocumentPdf24Regular />, onClick: run(async (a) => { await exportPdf(a, name) }) }
+            { key: 'epdf', label: 'Exportar PDF', icon: <DocumentPdf24Regular />, onClick: run(async (a) => { await exportPdf(a, name, pageSetup) }) }
           ]
         }
       ]
@@ -273,7 +276,9 @@ export function App(): ReactNode {
       <input ref={imgInput} type="file" accept="image/*" hidden onChange={onPickImage} />
       <div className="ao-doc-scroll">
         <div className="ao-doc-page" data-cols={String(layout.columns)} style={{ width: layout.orient === 'landscape' ? 1056 : 816, padding: layout.margin === 'narrow' ? 48 : layout.margin === 'wide' ? 140 : 96 }}>
+          {pageSetup.header && <div style={{ textAlign: 'center', color: '#8a8a8a', fontSize: 12, borderBottom: '1px solid #ededed', paddingBottom: 6, marginBottom: 14 }}>{pageSetup.header}</div>}
           <Editor apiRef={apiRef} onState={setSnap} />
+          {(pageSetup.footer || pageSetup.pageNumbers) && <div style={{ textAlign: 'center', color: '#8a8a8a', fontSize: 12, borderTop: '1px solid #ededed', paddingTop: 6, marginTop: 14 }}>{pageSetup.footer}{pageSetup.pageNumbers ? ' · 1' : ''}</div>}
         </div>
       </div>
 
@@ -295,6 +300,29 @@ export function App(): ReactNode {
             <DialogActions>
               <Button onClick={() => setFr((f) => ({ ...f, open: false }))}>Cancelar</Button>
               <Button appearance="primary" onClick={runFindReplace} disabled={!fr.find}>Substituir tudo</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      <Dialog open={hfOpen} onOpenChange={(_, d) => setHfOpen(d.open)}>
+        <DialogSurface style={{ maxWidth: 440 }}>
+          <DialogBody>
+            <DialogTitle>Cabeçalho e rodapé</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Field label="Cabeçalho">
+                  <Input value={pageSetup.header} onChange={(_, d) => setPageSetup((p) => ({ ...p, header: d.value }))} />
+                </Field>
+                <Field label="Rodapé">
+                  <Input value={pageSetup.footer} onChange={(_, d) => setPageSetup((p) => ({ ...p, footer: d.value }))} />
+                </Field>
+                <Checkbox label="Mostrar número de página (no PDF)" checked={pageSetup.pageNumbers} onChange={(_, d) => setPageSetup((p) => ({ ...p, pageNumbers: !!d.checked }))} />
+                <div style={{ fontSize: 12, color: 'var(--ao-text-3)' }}>O número de página aparece em cada página do PDF exportado.</div>
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="primary" onClick={() => setHfOpen(false)}>Concluir</Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>

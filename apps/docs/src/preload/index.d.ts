@@ -22,7 +22,7 @@ declare global {
     alcinaDocx: {
       toHtml(path: string): Promise<string>
       build(blocks: DocBlock[], path: string): Promise<void>
-      printPdf(html: string, path: string): Promise<void>
+      printPdf(html: string, path: string, opts?: { header?: string; footer?: string; pageNumbers?: boolean }): Promise<void>
     }
   }
 }

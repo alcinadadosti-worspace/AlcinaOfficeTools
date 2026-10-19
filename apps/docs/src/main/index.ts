@@ -112,13 +112,23 @@ app.whenReady().then(() => {
     await fs.writeFile(path, buf)
   })
 
-  ipcMain.handle('pdf:print', async (_e, html: string, path: string) => {
+  ipcMain.handle('pdf:print', async (_e, html: string, path: string, opts?: { header?: string; footer?: string; pageNumbers?: boolean }) => {
     const tmp = join(tmpdir(), `alcinadocs-${process.pid}-${Date.now()}.html`)
     await fs.writeFile(tmp, html, 'utf8')
     const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } })
     try {
       await win.loadFile(tmp)
-      const pdf = await win.webContents.printToPDF({ printBackground: true })
+      const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const useHF = !!(opts && (opts.header || opts.footer || opts.pageNumbers))
+      const pdfOpts: Parameters<typeof win.webContents.printToPDF>[0] = { printBackground: true }
+      if (useHF) {
+        const pn = opts!.pageNumbers ? ' <span class="pageNumber"></span> / <span class="totalPages"></span>' : ''
+        pdfOpts.displayHeaderFooter = true
+        pdfOpts.margins = { top: 1.2, bottom: 1.2, left: 0.8, right: 0.8 }
+        pdfOpts.headerTemplate = `<div style="font-size:9px;width:100%;text-align:center;color:#666;padding:0 1.5cm;">${esc(opts!.header ?? '')}</div>`
+        pdfOpts.footerTemplate = `<div style="font-size:9px;width:100%;text-align:center;color:#666;padding:0 1.5cm;">${esc(opts!.footer ?? '')}${pn}</div>`
+      }
+      const pdf = await win.webContents.printToPDF(pdfOpts)
       await fs.writeFile(path, pdf)
     } finally {
       win.destroy()

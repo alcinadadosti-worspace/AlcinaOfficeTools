@@ -33,5 +33,5 @@ contextBridge.exposeInMainWorld('alcinaFiles', {
 contextBridge.exposeInMainWorld('alcinaDocx', {
   toHtml: (path: string) => ipcRenderer.invoke('docx:toHtml', path),
   build: (blocks: DocBlock[], path: string) => ipcRenderer.invoke('docx:build', blocks, path),
-  printPdf: (html: string, path: string) => ipcRenderer.invoke('pdf:print', html, path)
+  printPdf: (html: string, path: string, opts?: { header?: string; footer?: string; pageNumbers?: boolean }) => ipcRenderer.invoke('pdf:print', html, path, opts)
 })
