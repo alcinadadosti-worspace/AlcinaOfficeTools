@@ -28,3 +28,7 @@ contextBridge.exposeInMainWorld('alcinaFiles', {
   read: (path: string) => ipcRenderer.invoke('fs:read', path),
   write: (path: string, data: Uint8Array) => ipcRenderer.invoke('fs:write', path, data)
 })
+
+contextBridge.exposeInMainWorld('alcinaPdf', {
+  print: (html: string, path: string) => ipcRenderer.invoke('pdf:print', html, path)
+})

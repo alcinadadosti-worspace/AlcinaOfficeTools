@@ -2,6 +2,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type FileFilter } from 'electron'
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { setupAutoUpdates } from '@alcina/updater/main'
 
 const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://alcina-office-updates.onrender.com/notes'
@@ -62,6 +63,20 @@ app.whenReady().then(() => {
   })
   ipcMain.handle('fs:write', async (_e, path: string, data: Uint8Array) => {
     await fs.writeFile(path, Buffer.from(data))
+  })
+
+  ipcMain.handle('pdf:print', async (_e, html: string, path: string) => {
+    const tmp = join(tmpdir(), `alcinanotes-${process.pid}-${Date.now()}.html`)
+    await fs.writeFile(tmp, html, 'utf8')
+    const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } })
+    try {
+      await win.loadFile(tmp)
+      const pdf = await win.webContents.printToPDF({ printBackground: true, margins: { top: 1, bottom: 1, left: 0.8, right: 0.8 } })
+      await fs.writeFile(path, pdf)
+    } finally {
+      win.destroy()
+      await fs.unlink(tmp).catch(() => undefined)
+    }
   })
 
   createWindow()

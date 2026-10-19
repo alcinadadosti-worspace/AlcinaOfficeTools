@@ -28,6 +28,7 @@ import {
   TextHeader224Regular,
   TextHeader324Regular,
   Search24Regular,
+  ArrowDownload24Regular,
   ArrowUndo24Regular,
   ArrowRedo24Regular
 } from '@fluentui/react-icons'
@@ -36,7 +37,7 @@ import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { Editor, FindBar, cmd, setColor, setHighlight, setFontSize, setFontFamily, setLineHeight, changeCase as cmdCase, type EditorApi, type Snapshot } from '@alcina/editor'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
-import { newNote, saveNotebook, openNotebook, baseName, emptyDoc, type Note } from './io'
+import { newNote, saveNotebook, openNotebook, exportNotePdf, baseName, emptyDoc, type Note } from './io'
 
 const EMPTY: Snapshot = { strong: false, em: false, underline: false, strike: false, sub: false, sup: false, heading: 0, align: null, canUndo: false, canRedo: false }
 
@@ -153,6 +154,13 @@ export function App(): ReactNode {
     apiRef.current?.setJSON(r.notes[0].doc)
     setPath(r.path)
   }
+  const doExportPdf = async (): Promise<void> => {
+    const api = apiRef.current
+    if (!api) return
+    const title = active.title || 'Nota'
+    const p = await exportNotePdf(api, active.title, title)
+    if (p) setNotice(`Nota exportada: ${p.split(/[\\/]/).pop()}`)
+  }
 
   const colorMenu = (apply: (c: string) => Command, list: [string, string][]): ReactNode => (
     <MenuList>
@@ -181,7 +189,8 @@ export function App(): ReactNode {
           label: 'Arquivo',
           items: [
             { key: 'open', label: 'Abrir', icon: <FolderOpen24Regular />, onClick: () => void doOpen() },
-            { key: 'save', label: 'Salvar', icon: <Save24Regular />, onClick: () => void doSave() }
+            { key: 'save', label: 'Salvar', icon: <Save24Regular />, onClick: () => void doSave() },
+            { key: 'pdf', label: 'Exportar PDF', icon: <ArrowDownload24Regular />, onClick: () => void doExportPdf() }
           ]
         },
         {

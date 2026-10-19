@@ -18,6 +18,9 @@ declare global {
       read(path: string): Promise<Uint8Array>
       write(path: string, data: Uint8Array): Promise<void>
     }
+    alcinaPdf: {
+      print(html: string, path: string): Promise<void>
+    }
   }
 }
 

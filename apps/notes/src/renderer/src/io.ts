@@ -1,4 +1,5 @@
 // Modelo e E/S do bloco de notas (.alcnotes).
+import type { EditorApi } from '@alcina/editor'
 
 export interface Note {
   id: string
@@ -49,6 +50,19 @@ export async function openNotebook(): Promise<{ notes: Note[]; path: string } | 
   const data = JSON.parse(dec.decode(bytes)) as Notebook
   if (data?.app !== 'alcina-notes') throw new Error('Este arquivo não é um bloco de notas AlcinaNotes.')
   return { notes: data.notes.length ? data.notes : [newNote('Nota 1')], path }
+}
+
+const PDF = [{ name: 'PDF', extensions: ['pdf'] }]
+
+/** Exporta a nota ativa como PDF, com o título como cabeçalho. */
+export async function exportNotePdf(api: EditorApi, title: string, suggested: string): Promise<string | null> {
+  const path = await window.alcinaFiles.saveDialog({ filters: PDF, defaultPath: `${suggested}.pdf` })
+  if (!path) return null
+  let html = api.getPrintHtml()
+  const safe = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim()
+  if (safe) html = html.replace('<div class="page">', `<div class="page"><h1 style="margin-top:0">${safe}</h1>`)
+  await window.alcinaPdf.print(html, path)
+  return path
 }
 
 export function baseName(path: string | null): string {
