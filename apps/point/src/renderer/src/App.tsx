@@ -76,7 +76,7 @@ export function App(): ReactNode {
   const [deck, setDeck] = useState<Deck>(() => newDeck())
   const [current, setCurrent] = useState(0)
   const [selId, setSelId] = useState<string | null>(null)
-  const [presenting, setPresenting] = useState(false)
+  const [presenting, setPresenting] = useState<false | number>(false)
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [version, setVersion] = useState('')
   const [path, setPath] = useState<string | null>(null)
@@ -135,9 +135,10 @@ export function App(): ReactNode {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'F5' && presenting === false) { e.preventDefault(); setPresenting(e.shiftKey ? idx : 0); return }
       const t = e.target as HTMLElement
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
-      if (presenting || !selId) return
+      if (presenting !== false || !selId) return
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); del() }
       else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicate() }
     }
@@ -241,7 +242,8 @@ export function App(): ReactNode {
         {
           label: 'Apresentação',
           items: [
-            { key: 'play', label: 'Iniciar', icon: <Play24Regular />, onClick: () => setPresenting(true) },
+            { key: 'play', label: 'Do início', icon: <Play24Regular />, onClick: () => setPresenting(0) },
+            { key: 'playhere', label: 'Deste slide', icon: <Play24Regular />, onClick: () => setPresenting(idx) },
             { key: 'trans', label: 'Transição', icon: txt('⇄'), menu: <MenuList>{TRANSITIONS.map(([v, n]) => (<MenuItem key={v} onClick={() => setTransition(v)}>{n}</MenuItem>))}</MenuList> },
             { key: 'pptx', label: 'Exportar PPTX', icon: <ArrowDownload24Regular />, onClick: run(async () => { await exportPptx(deck, name) }) }
           ]
@@ -269,7 +271,7 @@ export function App(): ReactNode {
           </div>
         </div>
       </div>
-      {presenting && <Present deck={deck} start={idx} onClose={() => setPresenting(false)} />}
+      {presenting !== false && <Present deck={deck} start={presenting} onClose={() => setPresenting(false)} />}
       <Dialog open={!!chartEdit} onOpenChange={(_, d) => !d.open && setChartEdit(null)}>
         <DialogSurface style={{ maxWidth: 520 }}>
           <DialogBody>
