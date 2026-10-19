@@ -532,5 +532,176 @@ reg(['MÊS', 'MES', 'MONTH'], (a) => { const d = parseDate(scalar(a[0])); return
 reg(['DIA', 'DAY'], (a) => { const d = parseDate(scalar(a[0])); return d ? d.getDate() : err('#VALOR!') })
 reg(['DIA.DA.SEMANA', 'WEEKDAY'], (a) => { const d = parseDate(scalar(a[0])); return d ? d.getDay() + 1 : err('#VALOR!') })
 
+// ===== Ampliação da biblioteca (v0.5): trigonometria, financeiras, estatística, texto, data/hora, informação =====
+
+function fact(n: number): number { n = Math.trunc(n); if (n < 0) return NaN; let f = 1; for (let i = 2; i <= n; i++) f *= i; return f }
+function toRoman(n: number): string {
+  n = Math.trunc(n); if (n <= 0 || n > 3999) return ''
+  const map: [number, string][] = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]
+  let r = ''; for (const [v, s] of map) while (n >= v) { r += s; n -= v }
+  return r
+}
+function addMonths(d: Date, m: number): Date { return new Date(d.getFullYear(), d.getMonth() + Math.trunc(m), d.getDate()) }
+function workday(start: Date, days: number): Date {
+  const d = new Date(start); let n = Math.abs(Math.trunc(days)); const step = days >= 0 ? 1 : -1
+  while (n > 0) { d.setDate(d.getDate() + step); const w = d.getDay(); if (w !== 0 && w !== 6) n-- }
+  return d
+}
+function parseTime(v: CellValue): [number, number, number] | null {
+  const m = /(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(toText(v))
+  return m ? [+m[1], +m[2], m[3] ? +m[3] : 0] : null
+}
+function annuityResidual(r: number, nper: number, pmt: number, pv: number, fv: number, type: number): number {
+  if (Math.abs(r) < 1e-10) return pv + pmt * nper + fv
+  const t = Math.pow(1 + r, nper)
+  return pv * t + pmt * (1 + r * type) * (t - 1) / r + fv
+}
+function newton(f: (x: number) => number, guess: number, tol: number): number | null {
+  let r = guess
+  for (let i = 0; i < 128; i++) {
+    const y = f(r)
+    const d = (f(r + 1e-6) - y) / 1e-6
+    if (Math.abs(d) < 1e-13) break
+    const rn = r - y / d
+    if (!isFinite(rn) || rn <= -1) break
+    if (Math.abs(rn - r) < 1e-10) return rn
+    r = rn
+  }
+  return Math.abs(f(r)) < tol ? r : null
+}
+
+// --- Trigonometria ---
+reg(['SEN', 'SENO', 'SIN'], (a) => { const n = n1(a); return isError(n) ? n : Math.sin(n) })
+reg(['COS'], (a) => { const n = n1(a); return isError(n) ? n : Math.cos(n) })
+reg(['TAN'], (a) => { const n = n1(a); return isError(n) ? n : Math.tan(n) })
+reg(['ASEN', 'ASENO', 'ASIN'], (a) => { const n = n1(a); if (isError(n)) return n; return n < -1 || n > 1 ? err('#NÚM!') : Math.asin(n) })
+reg(['ACOS'], (a) => { const n = n1(a); if (isError(n)) return n; return n < -1 || n > 1 ? err('#NÚM!') : Math.acos(n) })
+reg(['ATAN'], (a) => { const n = n1(a); return isError(n) ? n : Math.atan(n) })
+reg(['ATAN2'], (a) => { const x = n1(a); if (isError(x)) return x; const y = n1(a, 1); if (isError(y)) return y; return Math.atan2(y, x) })
+reg(['SENH', 'SINH'], (a) => { const n = n1(a); return isError(n) ? n : Math.sinh(n) })
+reg(['COSH'], (a) => { const n = n1(a); return isError(n) ? n : Math.cosh(n) })
+reg(['TANH'], (a) => { const n = n1(a); return isError(n) ? n : Math.tanh(n) })
+reg(['GRAUS', 'DEGREES'], (a) => { const n = n1(a); return isError(n) ? n : (n * 180) / Math.PI })
+reg(['RADIANOS', 'RADIANS'], (a) => { const n = n1(a); return isError(n) ? n : (n * Math.PI) / 180 })
+
+// --- Matemática adicional ---
+reg(['PRODUTO', 'MULT', 'PRODUCT'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; return ns.length ? ns.reduce((s, x) => s * x, 1) : 0 })
+reg(['QUOCIENTE', 'QUOTIENT'], (a) => { const x = n1(a); if (isError(x)) return x; const y = n1(a, 1); if (isError(y)) return y; return y === 0 ? err('#DIV/0!') : Math.trunc(x / y) })
+reg(['PAR', 'EVEN'], (a) => { const n = n1(a); if (isError(n)) return n; const s = n < 0 ? -1 : 1; return s * Math.ceil(Math.abs(n) / 2) * 2 })
+reg(['ÍMPAR', 'IMPAR', 'ODD'], (a) => { const n = n1(a); if (isError(n)) return n; const s = n < 0 ? -1 : 1; const k = Math.ceil(Math.abs(n)); return s * (k % 2 === 0 ? k + 1 : k) })
+reg(['COMBIN'], (a) => { const n = n1(a); if (isError(n)) return n; const k = n1(a, 1); if (isError(k)) return k; if (k < 0 || k > n) return err('#NÚM!'); return Math.round(fact(n) / (fact(k) * fact(n - k))) })
+reg(['PERMUT'], (a) => { const n = n1(a); if (isError(n)) return n; const k = n1(a, 1); if (isError(k)) return k; if (k < 0 || k > n) return err('#NÚM!'); return Math.round(fact(n) / fact(n - k)) })
+reg(['ROMANO', 'ROMAN'], (a) => { const n = n1(a); if (isError(n)) return n; const r = toRoman(n); return r || err('#VALOR!') })
+
+// --- Estatística adicional ---
+reg(['ORDEM', 'ORDEM.EQ', 'RANK', 'RANK.EQ'], (a) => {
+  const x = n1(a); if (isError(x)) return x
+  const ref = nums([a[1]]); if (!Array.isArray(ref)) return ref
+  const asc = a[2] !== undefined && toBool(scalar(a[2])) === true
+  const sorted = [...ref].sort((p, q) => (asc ? p - q : q - p))
+  const i = sorted.indexOf(x)
+  return i < 0 ? err('#N/D') : i + 1
+})
+function percentileOf(ns: number[], k: number): number {
+  const s = [...ns].sort((x, y) => x - y)
+  const pos = k * (s.length - 1); const lo = Math.floor(pos); const fr = pos - lo
+  return lo + 1 < s.length ? s[lo] + fr * (s[lo + 1] - s[lo]) : s[lo]
+}
+reg(['PERCENTIL', 'PERCENTIL.INC', 'PERCENTILE'], (a) => { const ns = nums([a[0]]); if (!Array.isArray(ns)) return ns; if (!ns.length) return err('#NÚM!'); const k = n1(a, 1); if (isError(k)) return k; return k < 0 || k > 1 ? err('#NÚM!') : percentileOf(ns, k) })
+reg(['QUARTIL', 'QUARTIL.INC', 'QUARTILE'], (a) => { const ns = nums([a[0]]); if (!Array.isArray(ns)) return ns; if (!ns.length) return err('#NÚM!'); const q = n1(a, 1); if (isError(q)) return q; const qq = Math.trunc(q); return qq < 0 || qq > 4 ? err('#NÚM!') : percentileOf(ns, qq / 4) })
+reg(['MÉDIA.GEOMÉTRICA', 'MEDIA.GEOMETRICA', 'GEOMEAN'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; if (!ns.length) return err('#NÚM!'); for (const x of ns) if (x <= 0) return err('#NÚM!'); const p = ns.reduce((s, x) => s * x, 1); return Math.pow(p, 1 / ns.length) })
+reg(['MÉDIA.HARMÔNICA', 'MEDIA.HARMONICA', 'HARMEAN'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; if (!ns.length) return err('#NÚM!'); let s = 0; for (const x of ns) { if (x <= 0) return err('#NÚM!'); s += 1 / x } return ns.length / s })
+reg(['DESV.MÉDIO', 'DESV.MEDIO', 'AVEDEV'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; if (!ns.length) return err('#NÚM!'); const m = ns.reduce((s, x) => s + x, 0) / ns.length; return ns.reduce((s, x) => s + Math.abs(x - m), 0) / ns.length })
+
+// --- Financeiras ---
+reg(['VP', 'PV'], (a) => {
+  const r = n1(a); if (isError(r)) return r; const nper = n1(a, 1); if (isError(nper)) return nper; const pmt = n1(a, 2); if (isError(pmt)) return pmt
+  const fv = a[3] !== undefined ? n1(a, 3) : 0; if (isError(fv)) return fv; const ty = a[4] !== undefined ? n1(a, 4) : 0; if (isError(ty)) return ty
+  if (r === 0) return -(fv + pmt * nper)
+  const t = Math.pow(1 + r, nper)
+  return -(fv + pmt * (1 + r * ty) * (t - 1) / r) / t
+})
+reg(['VF', 'FV'], (a) => {
+  const r = n1(a); if (isError(r)) return r; const nper = n1(a, 1); if (isError(nper)) return nper; const pmt = n1(a, 2); if (isError(pmt)) return pmt
+  const pv = a[3] !== undefined ? n1(a, 3) : 0; if (isError(pv)) return pv; const ty = a[4] !== undefined ? n1(a, 4) : 0; if (isError(ty)) return ty
+  if (r === 0) return -(pv + pmt * nper)
+  const t = Math.pow(1 + r, nper)
+  return -(pv * t + pmt * (1 + r * ty) * (t - 1) / r)
+})
+reg(['PGTO', 'PMT'], (a) => {
+  const r = n1(a); if (isError(r)) return r; const nper = n1(a, 1); if (isError(nper)) return nper; const pv = n1(a, 2); if (isError(pv)) return pv
+  const fv = a[3] !== undefined ? n1(a, 3) : 0; if (isError(fv)) return fv; const ty = a[4] !== undefined ? n1(a, 4) : 0; if (isError(ty)) return ty
+  if (nper === 0) return err('#NÚM!')
+  if (r === 0) return -(pv + fv) / nper
+  const t = Math.pow(1 + r, nper)
+  return -(fv + pv * t) * r / ((1 + r * ty) * (t - 1))
+})
+reg(['NPER'], (a) => {
+  const r = n1(a); if (isError(r)) return r; const pmt = n1(a, 1); if (isError(pmt)) return pmt; const pv = n1(a, 2); if (isError(pv)) return pv
+  const fv = a[3] !== undefined ? n1(a, 3) : 0; if (isError(fv)) return fv; const ty = a[4] !== undefined ? n1(a, 4) : 0; if (isError(ty)) return ty
+  if (r === 0) return pmt === 0 ? err('#NÚM!') : -(pv + fv) / pmt
+  const num = pmt * (1 + r * ty) - fv * r
+  const den = pv * r + pmt * (1 + r * ty)
+  if (num / den <= 0) return err('#NÚM!')
+  return Math.log(num / den) / Math.log(1 + r)
+})
+reg(['TAXA', 'RATE'], (a) => {
+  const nper = n1(a); if (isError(nper)) return nper; const pmt = n1(a, 1); if (isError(pmt)) return pmt; const pv = n1(a, 2); if (isError(pv)) return pv
+  const fv = a[3] !== undefined ? n1(a, 3) : 0; if (isError(fv)) return fv; const ty = a[4] !== undefined ? n1(a, 4) : 0; if (isError(ty)) return ty
+  const guess = a[5] !== undefined ? n1(a, 5) : 0.1; if (isError(guess)) return guess
+  const r = newton((x) => annuityResidual(x, nper, pmt, pv, fv, ty), guess, 1e-5)
+  return r === null ? err('#NÚM!') : r
+})
+reg(['VPL', 'NPV'], (a) => {
+  const r = n1(a); if (isError(r)) return r
+  const cfs = flatten(a.slice(1))
+  let s = 0
+  for (let i = 0; i < cfs.length; i++) { const v = cfs[i]; if (isError(v)) return v; if (typeof v === 'number') s += v / Math.pow(1 + r, i + 1) }
+  return s
+})
+reg(['TIR', 'IRR'], (a) => {
+  const cfs = toList(a[0]).map((v) => (typeof v === 'number' ? v : 0))
+  const guess = a[1] !== undefined ? n1(a, 1) : 0.1; if (isError(guess)) return guess
+  const npv = (x: number): number => cfs.reduce((s, c, i) => s + c / Math.pow(1 + x, i), 0)
+  const r = newton(npv, guess, 1e-4)
+  return r === null ? err('#NÚM!') : r
+})
+
+// --- Texto adicional ---
+reg(['CÓDIGO', 'CODIGO', 'CODE'], (a) => { const s = toText(scalar(a[0])); return s ? s.charCodeAt(0) : err('#VALOR!') })
+reg(['CARÁT', 'CARACT', 'CHAR'], (a) => { const n = n1(a); if (isError(n)) return n; return String.fromCharCode(Math.trunc(n)) })
+reg(['UNICODE'], (a) => { const s = toText(scalar(a[0])); return s ? (s.codePointAt(0) ?? err('#VALOR!')) : err('#VALOR!') })
+reg(['UNICAR', 'UNICHAR'], (a) => { const n = n1(a); if (isError(n)) return n; return String.fromCodePoint(Math.trunc(n)) })
+reg(['LIMPAR', 'CLEAN'], (a) => toText(scalar(a[0])).replace(/[\u0000-\u001f\u007f]/g, ''))
+reg(['T'], (a) => { const v = scalar(a[0]); return typeof v === 'string' ? v : '' })
+reg(['MOEDA', 'DÓLAR', 'DOLAR', 'DOLLAR'], (a) => { const n = n1(a); if (isError(n)) return n; const dec = a[1] !== undefined ? n1(a, 1) : 2; if (isError(dec)) return dec; const dd = Math.max(0, Math.min(20, Math.trunc(dec))); return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: dd, maximumFractionDigits: dd }).format(n) })
+reg(['DEF.NÚM.DEC', 'DEF.NUM.DEC', 'FIXED'], (a) => { const n = n1(a); if (isError(n)) return n; const dec = a[1] !== undefined ? n1(a, 1) : 2; if (isError(dec)) return dec; const dd = Math.max(0, Math.min(20, Math.trunc(dec))); const noGrp = a[2] !== undefined && toBool(scalar(a[2])) === true; return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: dd, maximumFractionDigits: dd, useGrouping: !noGrp }).format(n) })
+
+// --- Data e hora adicionais (datas em texto dd/mm/aaaa) ---
+reg(['DATA.VALOR', 'DATAVALOR', 'DATEVALUE'], (a) => { const d = parseDate(scalar(a[0])); return d ? fmtDate(d) : err('#VALOR!') })
+reg(['DIAS', 'DAYS'], (a) => { const e = parseDate(scalar(a[0])); const s = parseDate(scalar(a[1])); if (!e || !s) return err('#VALOR!'); return Math.round((e.getTime() - s.getTime()) / 86400000) })
+reg(['DATAM', 'EDATE'], (a) => { const d = parseDate(scalar(a[0])); if (!d) return err('#VALOR!'); const m = n1(a, 1); if (isError(m)) return m; return fmtDate(addMonths(d, m)) })
+reg(['FIMMÊS', 'FIMMES', 'EOMONTH'], (a) => { const d = parseDate(scalar(a[0])); if (!d) return err('#VALOR!'); const m = n1(a, 1); if (isError(m)) return m; return fmtDate(new Date(d.getFullYear(), d.getMonth() + Math.trunc(m) + 1, 0)) })
+reg(['DIATRABALHO', 'WORKDAY'], (a) => { const d = parseDate(scalar(a[0])); if (!d) return err('#VALOR!'); const n = n1(a, 1); if (isError(n)) return n; return fmtDate(workday(d, n)) })
+reg(['DIATRABALHOTOTAL', 'NETWORKDAYS'], (a) => {
+  let s = parseDate(scalar(a[0])); let e = parseDate(scalar(a[1])); if (!s || !e) return err('#VALOR!')
+  let sign = 1; if (s > e) { const t = s; s = e; e = t; sign = -1 }
+  let count = 0; const d = new Date(s)
+  while (d <= e) { const w = d.getDay(); if (w !== 0 && w !== 6) count++; d.setDate(d.getDate() + 1) }
+  return sign * count
+})
+reg(['NÚMSEMANA', 'NUMSEMANA', 'WEEKNUM'], (a) => { const d = parseDate(scalar(a[0])); if (!d) return err('#VALOR!'); const start = new Date(d.getFullYear(), 0, 1); const days = Math.floor((d.getTime() - start.getTime()) / 86400000); return Math.floor((days + start.getDay()) / 7) + 1 })
+reg(['TEMPO', 'TIME'], (a) => { const h = n1(a); if (isError(h)) return h; const m = n1(a, 1); if (isError(m)) return m; const s = a[2] !== undefined ? n1(a, 2) : 0; if (isError(s)) return s; const p = (x: number): string => String(Math.trunc(x)).padStart(2, '0'); return `${p(h)}:${p(m)}:${p(s)}` })
+reg(['HORA', 'HOUR'], (a) => { const t = parseTime(scalar(a[0])); return t ? t[0] : err('#VALOR!') })
+reg(['MINUTO', 'MINUTE'], (a) => { const t = parseTime(scalar(a[0])); return t ? t[1] : err('#VALOR!') })
+reg(['SEGUNDO', 'SECOND'], (a) => { const t = parseTime(scalar(a[0])); return t ? t[2] : err('#VALOR!') })
+
+// --- Informação adicional ---
+reg(['ÉPAR', 'EPAR', 'ISEVEN'], (a) => { const n = n1(a); return isError(n) ? n : Math.trunc(n) % 2 === 0 })
+reg(['ÉIMPAR', 'EIMPAR', 'ISODD'], (a) => { const n = n1(a); return isError(n) ? n : Math.abs(Math.trunc(n) % 2) === 1 })
+reg(['ÉNÃOTEXTO', 'ENAOTEXTO', 'ISNONTEXT'], (a) => typeof scalar(a[0]) !== 'string')
+reg(['N'], (a) => { const v = scalar(a[0]); if (typeof v === 'number') return v; if (typeof v === 'boolean') return v ? 1 : 0; if (isError(v)) return v; return 0 })
+reg(['TIPO', 'TYPE'], (a) => { const v = scalar(a[0]); if (typeof v === 'number') return 1; if (typeof v === 'string') return 2; if (typeof v === 'boolean') return 4; if (isError(v)) return 16; return 1 })
+
 /** Lista de nomes de funções (para autocompletar / ajuda). */
 export const FUNCTION_NAMES = (): string[] => Object.keys(FUNCTIONS).sort((a, b) => a.localeCompare(b, 'pt-BR'))
