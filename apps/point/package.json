@@ -12,7 +12,7 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "dist": "npm run build && electron-builder --win --linux --publish never"
+    "dist": "npm run build && electron-builder --publish never"
   },
   "dependencies": {
     "electron-updater": "^6.0.0",

@@ -16,7 +16,7 @@
     "test:watch": "vitest",
     "icons": "node scripts/make-icons.mjs",
     "sample": "node scripts/make-sample-data.mjs",
-    "dist": "npm run build && electron-builder --win --linux --publish never"
+    "dist": "npm run build && electron-builder --publish never"
   },
   "dependencies": {
     "electron-updater": "^6.0.0"
