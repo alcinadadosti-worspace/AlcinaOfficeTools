@@ -1,5 +1,6 @@
 // Faixa de opções (ribbon) genérica e reutilizável, dirigida por configuração.
 import { useState, type ReactNode } from 'react'
+import { Menu, MenuTrigger, MenuPopover } from '@fluentui/react-components'
 
 export interface RibbonItem {
   key: string
@@ -9,6 +10,8 @@ export interface RibbonItem {
   disabled?: boolean
   /** Realça o botão (estado ativado, ex.: negrito aplicado). */
   active?: boolean
+  /** Menu suspenso (um <MenuList> do Fluent); se presente, o botão o abre. */
+  menu?: ReactNode
 }
 export interface RibbonGroup {
   label: string
@@ -54,32 +57,44 @@ export function Ribbon({ tabs }: { tabs: RibbonTab[] }): ReactNode {
         {tab.groups.map((g, i) => (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', padding: '0 8px', borderRight: '1px solid var(--ao-border)' }}>
             <div style={{ display: 'flex', gap: 2, flex: 1, alignItems: 'flex-start' }}>
-              {g.items.map((it) => (
-                <button
-                  key={it.key}
-                  disabled={it.disabled}
-                  onClick={it.onClick}
-                  title={it.label}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 4,
-                    width: 66,
-                    padding: '6px 4px',
-                    border: 'none',
-                    borderRadius: 4,
-                    background: it.active ? 'var(--ao-green-soft)' : 'transparent',
-                    cursor: it.disabled ? 'default' : 'pointer',
-                    color: it.disabled ? 'var(--ao-text-3)' : it.active ? 'var(--ao-green-strong)' : 'var(--ao-text)',
-                    fontSize: 12,
-                    lineHeight: '13px'
-                  }}
-                >
-                  <span style={{ color: it.disabled ? 'var(--ao-text-3)' : 'var(--ao-green)', display: 'flex', height: 24, alignItems: 'center' }}>{it.icon}</span>
-                  <span style={{ textAlign: 'center' }}>{it.label}</span>
-                </button>
-              ))}
+              {g.items.map((it) => {
+                const btn = (
+                  <button
+                    key={it.key}
+                    disabled={it.disabled}
+                    onClick={it.menu ? undefined : it.onClick}
+                    title={it.label}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 4,
+                      width: 66,
+                      padding: '6px 4px',
+                      border: 'none',
+                      borderRadius: 4,
+                      background: it.active ? 'var(--ao-green-soft)' : 'transparent',
+                      cursor: it.disabled ? 'default' : 'pointer',
+                      color: it.disabled ? 'var(--ao-text-3)' : it.active ? 'var(--ao-green-strong)' : 'var(--ao-text)',
+                      fontSize: 12,
+                      lineHeight: '13px'
+                    }}
+                  >
+                    <span style={{ color: it.disabled ? 'var(--ao-text-3)' : 'var(--ao-green)', display: 'flex', height: 24, alignItems: 'center' }}>{it.icon}</span>
+                    <span style={{ textAlign: 'center' }}>
+                      {it.label}
+                      {it.menu ? ' ▾' : ''}
+                    </span>
+                  </button>
+                )
+                if (!it.menu) return btn
+                return (
+                  <Menu key={it.key}>
+                    <MenuTrigger disableButtonEnhancement>{btn}</MenuTrigger>
+                    <MenuPopover>{it.menu}</MenuPopover>
+                  </Menu>
+                )
+              })}
             </div>
             <div style={{ fontSize: 11, color: 'var(--ao-text-3)', textAlign: 'center', paddingBottom: 2 }}>{g.label}</div>
           </div>

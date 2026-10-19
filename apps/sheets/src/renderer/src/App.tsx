@@ -1,17 +1,25 @@
-// AlcinaSheets: planilha com formatação de células, intervalos, funções e E/S.
-import { useEffect, useReducer, useState, type ReactNode } from 'react'
+// AlcinaSheets: planilha com aba Página Inicial completa (formatação, estilos, edição).
+import { useEffect, useReducer, useState, type ReactNode, type JSX } from 'react'
+import { MenuList, MenuItem, MenuDivider, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Button, Input, Field, Checkbox } from '@fluentui/react-components'
 import {
   ClipboardPaste24Regular,
   Copy24Regular,
   Cut24Regular,
+  PaintBrush24Regular,
   TextBold24Regular,
   TextItalic24Regular,
   TextUnderline24Regular,
+  TextFont24Regular,
+  FontIncrease24Regular,
+  Table24Regular,
   TextAlignLeft24Regular,
   TextAlignCenter24Regular,
   TextAlignRight24Regular,
   Money24Regular,
   Eraser24Regular,
+  Add24Regular,
+  Delete24Regular,
+  Search24Regular,
   DocumentAdd24Regular,
   FolderOpen24Regular,
   Save24Regular,
@@ -26,20 +34,24 @@ import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
 import { colToLetter } from '@alcina/sheets-engine'
 import { newSheet, cellKey, type SheetDoc, type CellStyle, type NumFmt } from './model'
+import { remap, sortBlock, findReplaceAll } from './ops'
 import { Grid, type Sel } from './Grid'
 import { saveWorkbook, openWorkbook, importCsv, exportCsv, importXlsx, exportXlsx } from './io'
 
-const ROWS = 120
+const ROWS = 200
 const COLS = 40
 
-const TEXT_COLORS = ['', '#16211a', '#0f7a34', '#9a6d0c', '#b64a38', '#1a5fb4']
-const FILL_COLORS = ['', '#eef7f0', '#fdf3d0', '#eef0ee', '#e4eefb', '#fbe4ea']
-const QUICK_FUNCS = ['SOMA', 'MÉDIA', 'MÁXIMO', 'MÍNIMO', 'CONT.NÚM', 'SE', 'PROCV', 'ÍNDICE', 'CORRESP', 'SOMASE', 'SOMASES', 'ARRED']
+const FONTS = ['', 'Arial', 'Calibri', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana', 'Consolas']
+const SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36, 48]
+const TEXT_COLORS: [string, string][] = [['', 'Automática'], ['#16211a', 'Preto'], ['#0f7a34', 'Verde'], ['#9a6d0c', 'Dourado'], ['#b64a38', 'Vermelho'], ['#1a5fb4', 'Azul'], ['#6d3fb0', 'Roxo']]
+const FILL_COLORS: [string, string][] = [['', 'Nenhum'], ['#eef7f0', 'Verde'], ['#fdf3d0', 'Amarelo'], ['#eef0ee', 'Cinza'], ['#e4eefb', 'Azul'], ['#fbe4ea', 'Rosa'], ['#0f7a34', 'Verde forte']]
+const QUICK_FUNCS = ['SOMA', 'MÉDIA', 'MÁXIMO', 'MÍNIMO', 'CONT.NÚM', 'SE', 'SE.ERRO', 'PROCV', 'ÍNDICE', 'CORRESP', 'SOMASE', 'SOMASES', 'CONT.SE', 'ARRED', 'CONCATENAR']
+const NUM_FORMATS: [NumFmt, string][] = [['general', 'Geral'], ['number', 'Número'], ['currency', 'Moeda'], ['accounting', 'Contábil'], ['percent', 'Porcentagem'], ['thousands', 'Milhar'], ['scientific', 'Científico'], ['text', 'Texto']]
 
-function swatch(c: string, cross = false): ReactNode {
-  return <span style={{ display: 'inline-block', width: 16, height: 16, borderRadius: 3, background: c || '#ffffff', border: '1px solid var(--ao-border)', position: 'relative' }}>{!c && cross ? <span style={{ position: 'absolute', inset: 0, color: '#b64a38', fontSize: 15, lineHeight: '14px', textAlign: 'center' }}>∕</span> : null}</span>
+function swatch(c: string): JSX.Element {
+  return <span style={{ display: 'inline-block', width: 15, height: 15, borderRadius: 3, background: c || '#ffffff', border: '1px solid var(--ao-border)' }} />
 }
-function txtIcon(t: string): ReactNode {
+function txtIcon(t: string): JSX.Element {
   return <span style={{ fontWeight: 700, fontSize: 13 }}>{t}</span>
 }
 
@@ -51,6 +63,9 @@ export function App(): ReactNode {
   const [editing, setEditing] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<number | null>(null)
   const [clip, setClip] = useState<string[][] | null>(null)
+  const [painter, setPainter] = useState<CellStyle | null>(null)
+  const [fr, setFr] = useState<{ open: boolean; find: string; replace: string; matchCase: boolean }>({ open: false, find: '', replace: '', matchCase: false })
+  const [notice, setNotice] = useState<string | null>(null)
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [version, setVersion] = useState('')
   const [, bump] = useReducer((n: number) => n + 1, 0)
@@ -79,13 +94,11 @@ export function App(): ReactNode {
     }
     setSelState(s)
   }
-
   const move = (dr: number, dc: number): void => {
     const nr = Math.max(0, Math.min(ROWS - 1, sel.ar + dr))
     const nc = Math.max(0, Math.min(COLS - 1, sel.ac + dc))
     setSelState({ ar: nr, ac: nc, fr: nr, fc: nc })
   }
-
   const onCommit = (dir: 'down' | 'right'): void => {
     engine.setCell(sel.ar, sel.ac, editing ?? '')
     setEditing(null)
@@ -93,11 +106,16 @@ export function App(): ReactNode {
     move(dir === 'down' ? 1 : 0, dir === 'right' ? 1 : 0)
   }
 
-  const clearRange = (): void => {
-    for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) engine.setCell(r, c, '')
+  const applyData = (d: { entries: Parameters<typeof engine.load>[0]; styles: Record<string, CellStyle> }): void => {
+    engine.load(d.entries)
+    setSheets((arr) => arr.map((sh, i) => (i === idx ? { ...sh, styles: d.styles } : sh)))
     bump()
   }
 
+  const clearContent = (): void => {
+    for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) engine.setCell(r, c, '')
+    bump()
+  }
   const pasteRows = (rows: string[][]): void => {
     rows.forEach((row, i) => row.forEach((val, j) => engine.setCell(sel.ar + i, sel.ac + j, val)))
     bump()
@@ -113,7 +131,7 @@ export function App(): ReactNode {
     try {
       void navigator.clipboard?.writeText(rows.map((r) => r.join('\t')).join('\n'))
     } catch {
-      /* clipboard do sistema indisponível: usa o interno */
+      /* usa clipboard interno */
     }
   }
   const onPaste = (): void => {
@@ -130,20 +148,28 @@ export function App(): ReactNode {
     }
   }
 
-  // --- Formatação do intervalo selecionado ---
+  // --- Estilos ---
   const clean = (s: CellStyle): CellStyle => {
     const o: CellStyle = {}
     if (s.bold) o.bold = true
     if (s.italic) o.italic = true
     if (s.underline) o.underline = true
     if (s.align) o.align = s.align
+    if (s.valign) o.valign = s.valign
+    if (s.wrap) o.wrap = true
     if (s.color) o.color = s.color
     if (s.fill) o.fill = s.fill
+    if (s.fontFamily) o.fontFamily = s.fontFamily
+    if (s.fontSize) o.fontSize = s.fontSize
     if (s.fmt && s.fmt !== 'general') o.fmt = s.fmt
     if (s.decimals !== undefined) o.decimals = s.decimals
+    if (s.bt) o.bt = true
+    if (s.bb) o.bb = true
+    if (s.bl) o.bl = true
+    if (s.br) o.br = true
     return o
   }
-  const setStyleRange = (fn: (s: CellStyle) => CellStyle): void => {
+  const setStyleRange = (fn: (s: CellStyle, r: number, c: number) => CellStyle): void => {
     setSheets((arr) =>
       arr.map((sh, i) => {
         if (i !== idx) return sh
@@ -151,7 +177,7 @@ export function App(): ReactNode {
         for (let r = r1; r <= r2; r++)
           for (let c = c1; c <= c2; c++) {
             const k = cellKey(r, c)
-            const merged = clean(fn(next[k] ?? {}))
+            const merged = clean(fn(next[k] ?? {}, r, c))
             if (Object.keys(merged).length === 0) delete next[k]
             else next[k] = merged
           }
@@ -159,23 +185,61 @@ export function App(): ReactNode {
       })
     )
   }
-  const toggle = (key: 'bold' | 'italic' | 'underline'): void => {
+  const toggle = (key: 'bold' | 'italic' | 'underline' | 'wrap'): void => {
     const cur = !!activeStyle[key]
     setStyleRange((s) => ({ ...s, [key]: !cur }))
   }
-  const setAlign = (align: 'left' | 'center' | 'right'): void => setStyleRange((s) => ({ ...s, align }))
-  const setColor = (color: string): void => setStyleRange((s) => ({ ...s, color }))
-  const setFill = (fill: string): void => setStyleRange((s) => ({ ...s, fill }))
+  const set = (patch: Partial<CellStyle>): void => setStyleRange((s) => ({ ...s, ...patch }))
   const setFmt = (fmt: NumFmt): void => setStyleRange((s) => ({ ...s, fmt }))
   const changeDecimals = (delta: number): void =>
     setStyleRange((s) => {
       const fmt = s.fmt && s.fmt !== 'general' ? s.fmt : 'number'
-      const base = s.decimals ?? 2
-      return { ...s, fmt, decimals: Math.max(0, Math.min(10, base + delta)) }
+      return { ...s, fmt, decimals: Math.max(0, Math.min(10, (s.decimals ?? 2) + delta)) }
     })
+  const setBorders = (which: 'all' | 'outline' | 'none' | 'top' | 'bottom' | 'left' | 'right'): void =>
+    setStyleRange((s, r, c) => {
+      if (which === 'none') return { ...s, bt: false, bb: false, bl: false, br: false }
+      if (which === 'all') return { ...s, bt: true, bb: true, bl: true, br: true }
+      if (which === 'outline') return { ...s, bt: r === r1 ? true : s.bt, bb: r === r2 ? true : s.bb, bl: c === c1 ? true : s.bl, br: c === c2 ? true : s.br }
+      if (which === 'top') return { ...s, bt: true }
+      if (which === 'bottom') return { ...s, bb: true }
+      if (which === 'left') return { ...s, bl: true }
+      return { ...s, br: true }
+    })
+  const cellStyle = (preset: CellStyle): void => setStyleRange(() => ({ ...preset }))
+  const formatAsTable = (): void =>
+    setStyleRange((s, r, c) => {
+      const o: CellStyle = { ...s, bt: r === r1 ? true : s.bt, bb: r === r2 ? true : s.bb, bl: c === c1 ? true : s.bl, br: c === c2 ? true : s.br }
+      if (r === r1) return { ...o, bold: true, fill: '#0f7a34', color: '#ffffff' }
+      return { ...o, fill: (r - r1) % 2 === 0 ? '#eef7f0' : undefined }
+    })
+  const paintBrush = (): void => {
+    if (painter === null) setPainter(clean(activeStyle))
+    else {
+      const p = painter
+      setStyleRange(() => ({ ...p }))
+      setPainter(null)
+    }
+  }
 
-  const insertFunc = (name: string): void => {
-    setEditing(`=${name}(`)
+  // --- Edição ---
+  const autoSum = (fn: string): void => {
+    let start = sel.ar - 1
+    while (start >= 0 && engine.getRaw(start, sel.ac) !== '') start--
+    start++
+    const ref = start <= sel.ar - 1 ? `${colToLetter(sel.ac)}${start + 1}:${colToLetter(sel.ac)}${sel.ar}` : ''
+    setEditing(`=${fn}(${ref})`)
+  }
+  const doSort = (desc: boolean): void => applyData(sortBlock(engine, styles, r1, r2, c1, c2, c1, desc))
+  const insRows = (): void => { const n = r2 - r1 + 1; applyData(remap(engine, styles, (r, c) => ({ r: r >= r1 ? r + n : r, c }))) }
+  const delRows = (): void => { const n = r2 - r1 + 1; applyData(remap(engine, styles, (r, c) => (r >= r1 && r <= r2 ? null : { r: r > r2 ? r - n : r, c }))) }
+  const insCols = (): void => { const n = c2 - c1 + 1; applyData(remap(engine, styles, (r, c) => ({ r, c: c >= c1 ? c + n : c }))) }
+  const delCols = (): void => { const n = c2 - c1 + 1; applyData(remap(engine, styles, (r, c) => (c >= c1 && c <= c2 ? null : { r, c: c > c2 ? c - n : c }))) }
+  const runFindReplace = (): void => {
+    const n = findReplaceAll(engine, fr.find, fr.replace, fr.matchCase)
+    bump()
+    setNotice(`${n} substituição(ões) feita(s).`)
+    setFr((f) => ({ ...f, open: false }))
   }
 
   const replace = (next: SheetDoc[], file: string | null): void => {
@@ -186,7 +250,18 @@ export function App(): ReactNode {
     setEditing(null)
     bump()
   }
-  const run = (fn: () => Promise<unknown>) => (): void => void fn()
+  const run = (f: () => Promise<unknown>) => (): void => void f()
+
+  // --- Menus (conteúdos suspensos) ---
+  const colorMenu = (apply: (c: string) => void, list: [string, string][]): ReactNode => (
+    <MenuList>
+      {list.map(([v, name]) => (
+        <MenuItem key={v || 'x'} icon={swatch(v)} onClick={() => apply(v)}>
+          {name}
+        </MenuItem>
+      ))}
+    </MenuList>
+  )
 
   const ribbon: RibbonTab[] = [
     {
@@ -194,49 +269,43 @@ export function App(): ReactNode {
       label: 'Página Inicial',
       groups: [
         {
-          label: 'Arquivo',
-          items: [
-            { key: 'new', label: 'Novo', icon: <DocumentAdd24Regular />, onClick: () => replace([newSheet('Planilha1')], null) },
-            { key: 'open', label: 'Abrir', icon: <FolderOpen24Regular />, onClick: run(async () => { const r = await openWorkbook(); if (r) replace(r.sheets, r.path) }) },
-            { key: 'save', label: 'Salvar', icon: <Save24Regular />, onClick: run(async () => { const p = await saveWorkbook(sheets, docName); if (p) setPath(p) }) }
-          ]
-        },
-        {
           label: 'Área de transferência',
           items: [
             { key: 'paste', label: 'Colar', icon: <ClipboardPaste24Regular />, onClick: onPaste },
             { key: 'copy', label: 'Copiar', icon: <Copy24Regular />, onClick: onCopy },
-            { key: 'cut', label: 'Recortar', icon: <Cut24Regular />, onClick: () => { onCopy(); clearRange() } }
+            { key: 'cut', label: 'Recortar', icon: <Cut24Regular />, onClick: () => { onCopy(); clearContent() } },
+            { key: 'paint', label: 'Pincel', icon: <PaintBrush24Regular />, active: painter !== null, onClick: paintBrush }
           ]
         },
         {
           label: 'Fonte',
           items: [
+            { key: 'font', label: 'Fonte', icon: <TextFont24Regular />, menu: <MenuList>{FONTS.map((f) => (<MenuItem key={f || 'def'} onClick={() => set({ fontFamily: f || undefined })} style={{ fontFamily: f || undefined }}>{f || 'Padrão'}</MenuItem>))}</MenuList> },
+            { key: 'size', label: 'Tamanho', icon: <FontIncrease24Regular />, menu: <MenuList>{SIZES.map((s) => (<MenuItem key={s} onClick={() => set({ fontSize: s })}>{s}</MenuItem>))}</MenuList> },
             { key: 'b', label: 'Negrito', icon: <TextBold24Regular />, active: !!activeStyle.bold, onClick: () => toggle('bold') },
             { key: 'i', label: 'Itálico', icon: <TextItalic24Regular />, active: !!activeStyle.italic, onClick: () => toggle('italic') },
-            { key: 'u', label: 'Sublinhado', icon: <TextUnderline24Regular />, active: !!activeStyle.underline, onClick: () => toggle('underline') }
+            { key: 'u', label: 'Sublinhado', icon: <TextUnderline24Regular />, active: !!activeStyle.underline, onClick: () => toggle('underline') },
+            { key: 'bord', label: 'Bordas', icon: <Table24Regular />, menu: <MenuList><MenuItem onClick={() => setBorders('all')}>Todas as bordas</MenuItem><MenuItem onClick={() => setBorders('outline')}>Contorno</MenuItem><MenuItem onClick={() => setBorders('bottom')}>Borda inferior</MenuItem><MenuItem onClick={() => setBorders('top')}>Borda superior</MenuItem><MenuItem onClick={() => setBorders('left')}>Borda esquerda</MenuItem><MenuItem onClick={() => setBorders('right')}>Borda direita</MenuItem><MenuDivider /><MenuItem onClick={() => setBorders('none')}>Sem borda</MenuItem></MenuList> },
+            { key: 'tcolor', label: 'Cor do texto', icon: <span style={{ fontWeight: 700, borderBottom: `3px solid ${activeStyle.color || '#b64a38'}` }}>A</span>, menu: colorMenu((c) => set({ color: c || undefined }), TEXT_COLORS) },
+            { key: 'fill', label: 'Preenchimento', icon: swatch(activeStyle.fill || '#fdf3d0'), menu: colorMenu((c) => set({ fill: c || undefined }), FILL_COLORS) }
           ]
-        },
-        {
-          label: 'Cor do texto',
-          items: TEXT_COLORS.map((c) => ({ key: `tc${c || 'auto'}`, label: c ? '' : 'Auto', icon: swatch(c, true), active: (activeStyle.color ?? '') === c, onClick: () => setColor(c) }))
-        },
-        {
-          label: 'Preenchimento',
-          items: FILL_COLORS.map((c) => ({ key: `fl${c || 'none'}`, label: c ? '' : 'Nenhum', icon: swatch(c, true), active: (activeStyle.fill ?? '') === c, onClick: () => setFill(c) }))
         },
         {
           label: 'Alinhamento',
           items: [
-            { key: 'al', label: 'Esquerda', icon: <TextAlignLeft24Regular />, active: activeStyle.align === 'left', onClick: () => setAlign('left') },
-            { key: 'ac', label: 'Centro', icon: <TextAlignCenter24Regular />, active: activeStyle.align === 'center', onClick: () => setAlign('center') },
-            { key: 'ar', label: 'Direita', icon: <TextAlignRight24Regular />, active: activeStyle.align === 'right', onClick: () => setAlign('right') }
+            { key: 'vt', label: 'Superior', icon: txtIcon('↑'), active: activeStyle.valign === 'top', onClick: () => set({ valign: 'top' }) },
+            { key: 'vm', label: 'Meio', icon: txtIcon('↕'), active: activeStyle.valign === 'middle', onClick: () => set({ valign: 'middle' }) },
+            { key: 'vb', label: 'Inferior', icon: txtIcon('↓'), active: activeStyle.valign === 'bottom', onClick: () => set({ valign: 'bottom' }) },
+            { key: 'al', label: 'Esquerda', icon: <TextAlignLeft24Regular />, active: activeStyle.align === 'left', onClick: () => set({ align: 'left' }) },
+            { key: 'ac', label: 'Centro', icon: <TextAlignCenter24Regular />, active: activeStyle.align === 'center', onClick: () => set({ align: 'center' }) },
+            { key: 'ar', label: 'Direita', icon: <TextAlignRight24Regular />, active: activeStyle.align === 'right', onClick: () => set({ align: 'right' }) },
+            { key: 'wrap', label: 'Quebrar texto', icon: txtIcon('⤶'), active: !!activeStyle.wrap, onClick: () => toggle('wrap') }
           ]
         },
         {
           label: 'Número',
           items: [
-            { key: 'gen', label: 'Geral', icon: txtIcon('123'), active: !activeStyle.fmt || activeStyle.fmt === 'general', onClick: () => setFmt('general') },
+            { key: 'fmt', label: 'Formato', icon: txtIcon('123'), menu: <MenuList>{NUM_FORMATS.map(([v, name]) => (<MenuItem key={v} onClick={() => setFmt(v)}>{name}</MenuItem>))}</MenuList> },
             { key: 'cur', label: 'Moeda', icon: <Money24Regular />, active: activeStyle.fmt === 'currency', onClick: () => setFmt('currency') },
             { key: 'pct', label: 'Percentual', icon: txtIcon('%'), active: activeStyle.fmt === 'percent', onClick: () => setFmt('percent') },
             { key: 'mil', label: 'Milhar', icon: txtIcon('1.000'), active: activeStyle.fmt === 'thousands', onClick: () => setFmt('thousands') },
@@ -245,21 +314,54 @@ export function App(): ReactNode {
           ]
         },
         {
+          label: 'Estilos',
+          items: [
+            {
+              key: 'cellstyles',
+              label: 'Estilos de célula',
+              icon: txtIcon('Aa'),
+              menu: (
+                <MenuList>
+                  <MenuItem onClick={() => cellStyle({})}>Normal</MenuItem>
+                  <MenuItem onClick={() => cellStyle({ bold: true, fontSize: 18, color: '#0f7a34' })}>Título</MenuItem>
+                  <MenuItem onClick={() => cellStyle({ bold: true, fill: '#eef7f0', bb: true })}>Cabeçalho</MenuItem>
+                  <MenuDivider />
+                  <MenuItem onClick={() => cellStyle({ fill: '#e6f4ea', color: '#0a5831' })}>Bom</MenuItem>
+                  <MenuItem onClick={() => cellStyle({ fill: '#fbe4ea', color: '#b64a38' })}>Ruim</MenuItem>
+                  <MenuItem onClick={() => cellStyle({ fill: '#fdf3d0', color: '#9a6d0c' })}>Neutro</MenuItem>
+                  <MenuItem onClick={() => cellStyle({ bold: true, color: '#0f7a34' })}>Destaque</MenuItem>
+                  <MenuDivider />
+                  <MenuItem onClick={() => cellStyle({ fmt: 'currency' })}>Moeda</MenuItem>
+                  <MenuItem onClick={() => cellStyle({ fmt: 'percent' })}>Percentual</MenuItem>
+                </MenuList>
+              )
+            },
+            { key: 'astable', label: 'Formatar como tabela', icon: <DocumentTable24Regular />, onClick: formatAsTable }
+          ]
+        },
+        {
           label: 'Células',
           items: [
-            { key: 'clear', label: 'Limpar', icon: <Eraser24Regular />, onClick: clearRange }
+            { key: 'ins', label: 'Inserir', icon: <Add24Regular />, menu: <MenuList><MenuItem onClick={insRows}>Inserir linhas</MenuItem><MenuItem onClick={insCols}>Inserir colunas</MenuItem></MenuList> },
+            { key: 'del', label: 'Excluir', icon: <Delete24Regular />, menu: <MenuList><MenuItem onClick={delRows}>Excluir linhas</MenuItem><MenuItem onClick={delCols}>Excluir colunas</MenuItem></MenuList> }
+          ]
+        },
+        {
+          label: 'Edição',
+          items: [
+            { key: 'sum', label: 'AutoSoma', icon: txtIcon('Σ'), menu: <MenuList><MenuItem onClick={() => autoSum('SOMA')}>Soma</MenuItem><MenuItem onClick={() => autoSum('MÉDIA')}>Média</MenuItem><MenuItem onClick={() => autoSum('CONT.NÚM')}>Contar números</MenuItem><MenuItem onClick={() => autoSum('MÁXIMO')}>Máximo</MenuItem><MenuItem onClick={() => autoSum('MÍNIMO')}>Mínimo</MenuItem></MenuList> },
+            { key: 'sort', label: 'Classificar', icon: txtIcon('A↓'), menu: <MenuList><MenuItem onClick={() => doSort(false)}>Crescente (A → Z)</MenuItem><MenuItem onClick={() => doSort(true)}>Decrescente (Z → A)</MenuItem></MenuList> },
+            { key: 'find', label: 'Localizar', icon: <Search24Regular />, onClick: () => setFr((f) => ({ ...f, open: true })) },
+            { key: 'clear', label: 'Limpar', icon: <Eraser24Regular />, menu: <MenuList><MenuItem onClick={() => { clearContent(); setStyleRange(() => ({})) }}>Limpar tudo</MenuItem><MenuItem onClick={clearContent}>Limpar conteúdo</MenuItem><MenuItem onClick={() => setStyleRange(() => ({}))}>Limpar formatação</MenuItem></MenuList> }
           ]
         }
       ]
     },
     {
-      key: 'insert',
+      key: 'formulas',
       label: 'Fórmulas',
       groups: [
-        {
-          label: 'Inserir função',
-          items: QUICK_FUNCS.map((f) => ({ key: f, label: f, icon: <Calculator24Regular />, onClick: () => insertFunc(f) }))
-        },
+        { label: 'Inserir função', items: QUICK_FUNCS.map((f) => ({ key: f, label: f, icon: <Calculator24Regular />, onClick: () => setEditing(`=${f}(`) })) },
         {
           label: 'Dados',
           items: [
@@ -267,6 +369,14 @@ export function App(): ReactNode {
             { key: 'ixlsx', label: 'Importar Excel', icon: <DocumentTable24Regular />, onClick: run(async () => { const d = await importXlsx(); if (d) replace(d, null) }) },
             { key: 'ecsv', label: 'Exportar CSV', icon: <ArrowDownload24Regular />, onClick: run(async () => { await exportCsv(sheet, docName) }) },
             { key: 'exlsx', label: 'Exportar Excel', icon: <DocumentTable24Regular />, onClick: run(async () => { await exportXlsx(sheets, docName) }) }
+          ]
+        },
+        {
+          label: 'Arquivo',
+          items: [
+            { key: 'new', label: 'Novo', icon: <DocumentAdd24Regular />, onClick: () => replace([newSheet('Planilha1')], null) },
+            { key: 'open', label: 'Abrir', icon: <FolderOpen24Regular />, onClick: run(async () => { const r = await openWorkbook(); if (r) replace(r.sheets, r.path) }) },
+            { key: 'save', label: 'Salvar', icon: <Save24Regular />, onClick: run(async () => { const p = await saveWorkbook(sheets, docName); if (p) setPath(p) }) }
           ]
         }
       ]
@@ -277,13 +387,14 @@ export function App(): ReactNode {
   const selLabel = r1 === r2 && c1 === c2 ? `${colToLetter(sel.ac)}${sel.ar + 1}` : `${colToLetter(c1)}${r1 + 1}:${colToLetter(c2)}${r2 + 1}`
 
   return (
-    <AppShell
-      appName={`${docName} — Planilha`}
-      headerRight={version ? <span style={{ fontSize: 12, opacity: 0.85 }}>v{version}</span> : null}
-      ribbon={ribbon}
-      update={{ status, onInstall: () => void getUpdater()?.install() }}
-    >
+    <AppShell appName={`${docName} — Planilha`} headerRight={version ? <span style={{ fontSize: 12, opacity: 0.85 }}>v{version}</span> : null} ribbon={ribbon} update={{ status, onInstall: () => void getUpdater()?.install() }}>
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {notice && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px', background: 'var(--ao-green-soft)', borderBottom: '1px solid var(--ao-border)', fontSize: 12, flex: 'none' }}>
+            <span style={{ flex: 1 }}>{notice}</span>
+            <button onClick={() => setNotice(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ao-text-2)' }}>×</button>
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderBottom: '1px solid var(--ao-border)', flex: 'none' }}>
           <div style={{ width: 84, flex: 'none', textAlign: 'center', fontSize: 12, fontWeight: 600, border: '1px solid var(--ao-border)', borderRadius: 4, padding: '3px 0', fontFamily: 'Consolas, monospace' }}>{selLabel}</div>
           <span style={{ color: 'var(--ao-gold-text)', fontWeight: 700, fontFamily: 'serif' }}>fx</span>
@@ -291,14 +402,7 @@ export function App(): ReactNode {
             value={formulaValue}
             onChange={(e) => setEditing(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                onCommit('down')
-              } else if (e.key === 'Escape') {
-                e.preventDefault()
-                setEditing(null)
-                bump()
-              }
+              if (e.key === 'Enter') { e.preventDefault(); onCommit('down') } else if (e.key === 'Escape') { e.preventDefault(); setEditing(null); bump() }
             }}
             placeholder="Valor ou fórmula — ex.: =PROCV(A2; D:E; 2)"
             style={{ flex: 1, minWidth: 0, border: '1px solid var(--ao-border)', borderRadius: 4, padding: '4px 8px', fontSize: 13, fontFamily: 'Consolas, monospace', background: 'var(--ao-bg)', color: 'var(--ao-text)' }}
@@ -306,44 +410,16 @@ export function App(): ReactNode {
         </div>
 
         <div style={{ flex: 1, minHeight: 0 }}>
-          <Grid
-            engine={engine}
-            styles={styles}
-            rows={ROWS}
-            cols={COLS}
-            rev={0}
-            sel={sel}
-            editing={editing}
-            setSel={setSel}
-            onStartEdit={(init) => setEditing(init)}
-            onEditChange={(t) => setEditing(t)}
-            onCommit={onCommit}
-            onCancel={() => { setEditing(null); bump() }}
-            onClear={clearRange}
-            onCopy={onCopy}
-            onPaste={onPaste}
-          />
+          <Grid engine={engine} styles={styles} rows={ROWS} cols={COLS} rev={0} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'stretch', height: 30, borderTop: '1px solid var(--ao-border)', background: 'var(--ao-surface)', flex: 'none' }}>
           {sheets.map((s, i) => {
             const on = i === active
             return (
-              <div
-                key={i}
-                onClick={() => { setActive(i); setSelState({ ar: 0, ac: 0, fr: 0, fc: 0 }); setEditing(null) }}
-                onDoubleClick={() => setRenaming(i)}
-                style={{ display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 12, cursor: 'pointer', background: on ? 'var(--ao-bg)' : 'transparent', borderRight: '1px solid var(--ao-border)', borderTop: on ? '2px solid var(--ao-green)' : '2px solid transparent', fontWeight: on ? 600 : 400 }}
-              >
+              <div key={i} onClick={() => { setActive(i); setSelState({ ar: 0, ac: 0, fr: 0, fc: 0 }); setEditing(null) }} onDoubleClick={() => setRenaming(i)} style={{ display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 12, cursor: 'pointer', background: on ? 'var(--ao-bg)' : 'transparent', borderRight: '1px solid var(--ao-border)', borderTop: on ? '2px solid var(--ao-green)' : '2px solid transparent', fontWeight: on ? 600 : 400 }}>
                 {renaming === i ? (
-                  <input
-                    autoFocus
-                    defaultValue={s.name}
-                    onClick={(e) => e.stopPropagation()}
-                    onBlur={(e) => { const v = e.target.value.trim(); if (v) setSheets((arr) => arr.map((x, j) => (j === i ? { ...x, name: v } : x))); setRenaming(null) }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setRenaming(null) }}
-                    style={{ width: 90, font: 'inherit', border: '1px solid var(--ao-green)', borderRadius: 3 }}
-                  />
+                  <input autoFocus defaultValue={s.name} onClick={(e) => e.stopPropagation()} onBlur={(e) => { const v = e.target.value.trim(); if (v) setSheets((arr) => arr.map((x, j) => (j === i ? { ...x, name: v } : x))); setRenaming(null) }} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setRenaming(null) }} style={{ width: 90, font: 'inherit', border: '1px solid var(--ao-green)', borderRadius: 3 }} />
                 ) : (
                   s.name
                 )}
@@ -355,6 +431,29 @@ export function App(): ReactNode {
           </button>
         </div>
       </div>
+
+      <Dialog open={fr.open} onOpenChange={(_, d) => setFr((f) => ({ ...f, open: d.open }))}>
+        <DialogSurface style={{ maxWidth: 440 }}>
+          <DialogBody>
+            <DialogTitle>Localizar e substituir</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Field label="Localizar">
+                  <Input value={fr.find} onChange={(_, d) => setFr((f) => ({ ...f, find: d.value }))} />
+                </Field>
+                <Field label="Substituir por">
+                  <Input value={fr.replace} onChange={(_, d) => setFr((f) => ({ ...f, replace: d.value }))} />
+                </Field>
+                <Checkbox label="Diferenciar maiúsculas de minúsculas" checked={fr.matchCase} onChange={(_, d) => setFr((f) => ({ ...f, matchCase: !!d.checked }))} />
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setFr((f) => ({ ...f, open: false }))}>Cancelar</Button>
+              <Button appearance="primary" onClick={runFindReplace} disabled={!fr.find}>Substituir tudo</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </AppShell>
   )
 }

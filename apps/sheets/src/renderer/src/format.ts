@@ -13,6 +13,8 @@ export function formatCell(v: CellValue, style?: CellStyle): string {
       if (fmt === 'currency') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: d ?? 2, maximumFractionDigits: d ?? 2 }).format(v)
       if (fmt === 'thousands') return new Intl.NumberFormat('pt-BR', { useGrouping: true, minimumFractionDigits: d ?? 0, maximumFractionDigits: d ?? 2 }).format(v)
       if (fmt === 'number') return new Intl.NumberFormat('pt-BR', { useGrouping: false, minimumFractionDigits: d ?? 2, maximumFractionDigits: d ?? 2 }).format(v)
+      if (fmt === 'accounting') return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: d ?? 2, maximumFractionDigits: d ?? 2 }).format(v)
+      if (fmt === 'scientific') return v.toExponential(d ?? 2).replace('.', ',').replace('e', 'E')
     } catch {
       /* formato inválido: cai no padrão */
     }

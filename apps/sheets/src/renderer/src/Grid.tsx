@@ -140,26 +140,31 @@ export function Grid(props: GridProps): ReactNode {
               const inRange = r >= r1 && r <= r2 && c >= c1 && c <= c2
               const active = r === sel.ar && c === sel.ac
               const align = st?.align ?? (numeric ? 'right' : 'left')
+              const bc = 'var(--ao-text-2)'
               const cs: CSSProperties = {
                 width: W,
                 height: H,
                 flex: 'none',
                 padding: '0 5px',
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: st?.valign === 'top' ? 'flex-start' : st?.valign === 'bottom' ? 'flex-end' : 'center',
                 justifyContent: align === 'right' ? 'flex-end' : align === 'center' ? 'center' : 'flex-start',
-                fontSize: 13,
+                fontFamily: st?.fontFamily || 'inherit',
+                fontSize: st?.fontSize ?? 13,
                 fontWeight: st?.bold ? 700 : 400,
                 fontStyle: st?.italic ? 'italic' : 'normal',
                 textDecoration: st?.underline ? 'underline' : 'none',
                 color: st?.color || 'var(--ao-text)',
                 background: st?.fill || (inRange && !active ? 'var(--ao-green-soft)' : '#fff'),
-                borderRight: '1px solid var(--ao-border)',
-                borderBottom: '1px solid var(--ao-border)',
+                borderRight: st?.br ? `1.5px solid ${bc}` : '1px solid var(--ao-border)',
+                borderBottom: st?.bb ? `1.5px solid ${bc}` : '1px solid var(--ao-border)',
+                borderTop: st?.bt ? `1.5px solid ${bc}` : undefined,
+                borderLeft: st?.bl ? `1.5px solid ${bc}` : undefined,
                 outline: active ? '2px solid var(--ao-green)' : inRange ? '1px solid var(--ao-green)' : 'none',
                 outlineOffset: -1,
                 overflow: 'hidden',
-                whiteSpace: 'nowrap',
+                whiteSpace: st?.wrap ? 'normal' : 'nowrap',
+                wordBreak: st?.wrap ? 'break-word' : 'normal',
                 cursor: 'cell',
                 position: 'relative',
                 zIndex: active ? 1 : 0
