@@ -115,6 +115,7 @@ export const cmd = {
   h3: setBlockType(schema.nodes.heading, { level: 3 }),
   bullet: wrapInList(schema.nodes.bullet_list),
   ordered: wrapInList(schema.nodes.ordered_list),
+  taskList: wrapInList(schema.nodes.task_list),
   quote: wrapIn(schema.nodes.blockquote),
   hr: insertHr,
   undo,
@@ -136,7 +137,7 @@ export function editorKeymap(): Plugin {
     'Mod-z': undo,
     'Mod-y': redo,
     'Mod-Shift-z': redo,
-    Enter: splitListItem(li),
+    Enter: chainCommands(splitListItem(li), splitListItem(schema.nodes.task_item)),
     Tab: chainCommands(goToNextCell(1), sinkListItem(li)),
     'Shift-Tab': chainCommands(goToNextCell(-1), liftListItem(li)),
     'Shift-Enter': chainCommands(exitCode, (state, dispatch) => {

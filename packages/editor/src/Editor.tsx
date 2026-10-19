@@ -7,6 +7,7 @@ import { history, undoDepth, redoDepth } from 'prosemirror-history'
 import { columnResizing, tableEditing } from 'prosemirror-tables'
 import { schema } from './schema'
 import { editorKeymap, baseKeymapPlugin } from './commands'
+import { TaskItemView } from './taskview'
 import { docToBlocks } from './pmdocx'
 import type { DocBlock } from './docmodel'
 
@@ -67,6 +68,9 @@ export function Editor({ apiRef, onState }: { apiRef: MutableRefObject<EditorApi
     const doc = schema.node('doc', null, [schema.node('paragraph')])
     const view = new EditorView(host.current!, {
       state: EditorState.create({ doc, plugins: [columnResizing(), tableEditing(), history(), editorKeymap(), baseKeymapPlugin()] }),
+      nodeViews: {
+        task_item: (node, view, getPos) => new TaskItemView(node, view, getPos as () => number | undefined)
+      },
       dispatchTransaction(tr) {
         const next = view.state.apply(tr)
         view.updateState(next)

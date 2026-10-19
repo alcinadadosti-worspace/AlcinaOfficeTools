@@ -102,3 +102,10 @@ body {
 .ProseMirror .selectedCell { background: rgba(15,122,52,0.14); }
 .ProseMirror .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: var(--ao-green, #0f7a34); pointer-events: none; z-index: 20; }
 .ProseMirror.resize-cursor { cursor: col-resize; }
+
+/* Lista de tarefas (to-do) do editor */
+.ProseMirror ul.ao-task-list { list-style: none; padding-left: 2px; margin: 8px 0; }
+.ProseMirror li.ao-task-item { display: flex; align-items: flex-start; gap: 8px; }
+.ProseMirror li.ao-task-item > .ao-task-box { margin-top: 3px; width: 16px; height: 16px; flex: none; cursor: pointer; accent-color: var(--ao-green, #0f7a34); }
+.ProseMirror li.ao-task-item > .ao-task-body { flex: 1; min-width: 0; }
+.ProseMirror li.ao-task-item[data-checked="true"] > .ao-task-body { color: #8a978f; text-decoration: line-through; }

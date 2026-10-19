@@ -188,6 +188,7 @@ export function App(): ReactNode {
           items: [
             { key: 'ul', label: 'Marcadores', icon: <TextBulletList24Regular />, onClick: () => exec(cmd.bullet) },
             { key: 'ol', label: 'Numerada', icon: <TextNumberListLtr24Regular />, onClick: () => exec(cmd.ordered) },
+            { key: 'task', label: 'Lista de tarefas', icon: txt('☑'), onClick: () => exec(cmd.taskList) },
             { key: 'indless', label: 'Diminuir recuo', icon: <TextIndentDecrease24Regular />, onClick: () => exec(cmd.indentLess) },
             { key: 'indmore', label: 'Aumentar recuo', icon: <TextIndentIncrease24Regular />, onClick: () => exec(cmd.indentMore) },
             { key: 'al', label: 'Esquerda', icon: <TextAlignLeft24Regular />, active: snap.align === 'left' || snap.align === null, onClick: () => exec(cmd.alignLeft) },

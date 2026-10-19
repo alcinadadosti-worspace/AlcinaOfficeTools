@@ -39,6 +39,22 @@ let nodes = basic.spec.nodes.update('paragraph', paragraph).update('heading', he
 nodes = addListNodes(nodes, 'paragraph block*', 'block')
 nodes = nodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+', cellAttributes: {} }))
 
+// Lista de tarefas (to-do) com caixa de seleção por item.
+const taskList: NodeSpec = {
+  group: 'block',
+  content: 'task_item+',
+  parseDOM: [{ tag: 'ul[data-type="task-list"]' }],
+  toDOM: () => ['ul', { 'data-type': 'task-list', class: 'ao-task-list' }, 0]
+}
+const taskItem: NodeSpec = {
+  content: 'paragraph block*',
+  defining: true,
+  attrs: { checked: { default: false } },
+  parseDOM: [{ tag: 'li[data-type="task-item"]', getAttrs: (dom) => ({ checked: (dom as HTMLElement).getAttribute('data-checked') === 'true' }) }],
+  toDOM: (node) => ['li', { 'data-type': 'task-item', 'data-checked': node.attrs.checked ? 'true' : 'false', class: 'ao-task-item' }, ['div', { class: 'ao-task-body' }, 0]]
+}
+nodes = nodes.append({ task_list: taskList, task_item: taskItem })
+
 const underline: MarkSpec = { parseDOM: [{ tag: 'u' }, { style: 'text-decoration=underline' }], toDOM: () => ['u', 0] }
 const strike: MarkSpec = { parseDOM: [{ tag: 's' }, { tag: 'del' }, { style: 'text-decoration=line-through' }], toDOM: () => ['s', 0] }
 const sub: MarkSpec = { parseDOM: [{ tag: 'sub' }], toDOM: () => ['sub', 0] }
