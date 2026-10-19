@@ -86,6 +86,23 @@ export function App(): ReactNode {
   const r1 = Math.min(sel.ar, sel.fr), r2 = Math.max(sel.ar, sel.fr)
   const c1 = Math.min(sel.ac, sel.fc), c2 = Math.max(sel.ac, sel.fc)
   const activeStyle = styles[cellKey(sel.ar, sel.ac)] ?? {}
+  const merges = sheet.merges ?? []
+  const hasMergeInSel = merges.some((m) => m.r >= r1 && m.r <= r2 && m.c <= c2 && m.c + m.cs - 1 >= c1)
+  const mergeCells = (): void => {
+    if (!(r1 === r2 && c1 < c2)) return
+    const m = { r: r1, c: c1, cs: c2 - c1 + 1 }
+    setSheets((arr) =>
+      arr.map((sh, i) => {
+        if (i !== idx) return sh
+        const kept = (sh.merges ?? []).filter((x) => !(x.r === m.r && x.c <= c2 && x.c + x.cs - 1 >= c1))
+        const k = cellKey(r1, c1)
+        return { ...sh, merges: [...kept, m], styles: { ...sh.styles, [k]: { ...sh.styles[k], align: 'center' as const } } }
+      })
+    )
+  }
+  const unmergeCells = (): void => {
+    setSheets((arr) => arr.map((sh, i) => (i === idx ? { ...sh, merges: (sh.merges ?? []).filter((m) => !(m.r >= r1 && m.r <= r2 && m.c <= c2 && m.c + m.cs - 1 >= c1)) } : sh)))
+  }
 
   const setSel = (s: Sel): void => {
     if (editing !== null) {
@@ -300,7 +317,9 @@ export function App(): ReactNode {
             { key: 'al', label: 'Esquerda', icon: <TextAlignLeft24Regular />, active: activeStyle.align === 'left', onClick: () => set({ align: 'left' }) },
             { key: 'ac', label: 'Centro', icon: <TextAlignCenter24Regular />, active: activeStyle.align === 'center', onClick: () => set({ align: 'center' }) },
             { key: 'ar', label: 'Direita', icon: <TextAlignRight24Regular />, active: activeStyle.align === 'right', onClick: () => set({ align: 'right' }) },
-            { key: 'wrap', label: 'Quebrar texto', icon: txtIcon('⤶'), active: !!activeStyle.wrap, onClick: () => toggle('wrap') }
+            { key: 'wrap', label: 'Quebrar texto', icon: txtIcon('⤶'), active: !!activeStyle.wrap, onClick: () => toggle('wrap') },
+            { key: 'merge', label: 'Mesclar e centralizar', icon: txtIcon('⬌'), disabled: !(r1 === r2 && c1 < c2), onClick: mergeCells },
+            { key: 'unmerge', label: 'Separar', icon: txtIcon('⬍'), disabled: !hasMergeInSel, onClick: unmergeCells }
           ]
         },
         {
@@ -426,7 +445,7 @@ export function App(): ReactNode {
         </div>
 
         <div style={{ flex: 1, minHeight: 0 }}>
-          <Grid engine={engine} styles={styles} rows={ROWS} cols={COLS} rev={rev} freezeR={freeze.r} freezeC={freeze.c} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
+          <Grid engine={engine} styles={styles} merges={merges} rows={ROWS} cols={COLS} rev={rev} freezeR={freeze.r} freezeC={freeze.c} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'stretch', height: 30, borderTop: '1px solid var(--ao-border)', background: 'var(--ao-surface)', flex: 'none' }}>

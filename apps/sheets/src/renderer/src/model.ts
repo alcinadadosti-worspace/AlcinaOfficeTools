@@ -23,16 +23,25 @@ export interface CellStyle {
   br?: boolean
 }
 
+/** Mesclagem horizontal: âncora (r,c) ocupando `cs` colunas. */
+export interface Merge {
+  r: number
+  c: number
+  cs: number
+}
+
 export interface SheetDoc {
   name: string
   engine: SheetEngine
   styles: Record<string, CellStyle>
+  merges: Merge[]
 }
 
 export interface SavedSheet {
   name: string
   cells: CellEntry[]
   styles?: Record<string, CellStyle>
+  merges?: Merge[]
 }
 
 export interface SavedWorkbook {
@@ -46,11 +55,11 @@ export function cellKey(row: number, col: number): string {
 }
 
 export function newSheet(name: string): SheetDoc {
-  return { name, engine: new SheetEngine(), styles: {} }
+  return { name, engine: new SheetEngine(), styles: {}, merges: [] }
 }
 
 export function serialize(sheets: SheetDoc[]): SavedWorkbook {
-  return { version: 1, app: 'alcina-sheets', sheets: sheets.map((s) => ({ name: s.name, cells: s.engine.entries(), styles: s.styles })) }
+  return { version: 1, app: 'alcina-sheets', sheets: sheets.map((s) => ({ name: s.name, cells: s.engine.entries(), styles: s.styles, merges: s.merges })) }
 }
 
 export function deserialize(data: SavedWorkbook): SheetDoc[] {
@@ -58,7 +67,7 @@ export function deserialize(data: SavedWorkbook): SheetDoc[] {
   const out = (data.sheets ?? []).map((s) => {
     const e = new SheetEngine()
     e.load(s.cells ?? [])
-    return { name: s.name, engine: e, styles: s.styles ?? {} }
+    return { name: s.name, engine: e, styles: s.styles ?? {}, merges: s.merges ?? [] }
   })
   return out.length ? out : [newSheet('Planilha1')]
 }

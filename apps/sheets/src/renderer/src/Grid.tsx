@@ -1,7 +1,7 @@
 // Grade de células: seleção de intervalo, edição, estilos e teclado.
 import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
 import { type SheetEngine, type CellValue, colToLetter } from '@alcina/sheets-engine'
-import { cellKey, type CellStyle } from './model'
+import { cellKey, type CellStyle, type Merge } from './model'
 import { formatCell } from './format'
 
 const W = 94
@@ -23,6 +23,7 @@ export interface GridProps {
   rev: number
   freezeR?: number
   freezeC?: number
+  merges?: Merge[]
   sel: Sel
   editing: string | null
   setSel: (s: Sel) => void
@@ -87,6 +88,17 @@ export function Grid(props: GridProps): ReactNode {
     return { spillMap: sm, conflict: cf }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, rows, cols, props.rev])
+
+  // Mesclagem horizontal: âncora -> nº de colunas; conjunto de células cobertas (ocultas).
+  const { spanMap, mcovered } = useMemo(() => {
+    const sp = new Map<string, number>()
+    const cov = new Set<string>()
+    for (const m of props.merges ?? []) {
+      sp.set(cellKey(m.r, m.c), m.cs)
+      for (let j = 1; j < m.cs; j++) cov.add(cellKey(m.r, m.c + j))
+    }
+    return { spanMap: sp, mcovered: cov }
+  }, [props.merges])
 
   const r1 = Math.min(sel.ar, sel.fr)
   const r2 = Math.max(sel.ar, sel.fr)
@@ -178,6 +190,8 @@ export function Grid(props: GridProps): ReactNode {
             {header(String(r + 1), RNW, true, r >= r1 && r <= r2, 'rn')}
             {Array.from({ length: cols }, (_, c) => {
               const key = cellKey(r, c)
+              if (mcovered.has(key)) return null
+              const mspan = spanMap.get(key) ?? 1
               const st = styles[key]
               const v = engine.getValue(r, c)
               const spillInfo = spillMap.get(key)
@@ -190,7 +204,7 @@ export function Grid(props: GridProps): ReactNode {
               const align = st?.align ?? (numeric ? 'right' : 'left')
               const bc = 'var(--ao-text-2)'
               const cs: CSSProperties = {
-                width: W,
+                width: W * mspan,
                 height: H,
                 flex: 'none',
                 padding: '0 5px',
