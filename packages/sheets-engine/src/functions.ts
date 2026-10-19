@@ -2,9 +2,9 @@
 import { type CellValue, type CellError, isError, err } from './types'
 import { type ArgValue, type Matrix, flatten, scalar, toList, isMatrix, toNumber, toText, toBool, parseNumber } from './runtime'
 
-export const FUNCTIONS: Record<string, (args: ArgValue[]) => CellValue> = {}
+export const FUNCTIONS: Record<string, (args: ArgValue[]) => ArgValue> = {}
 
-function reg(names: string[], fn: (args: ArgValue[]) => CellValue): void {
+function reg(names: string[], fn: (args: ArgValue[]) => ArgValue): void {
   for (const n of names) FUNCTIONS[n] = fn
 }
 
@@ -498,9 +498,9 @@ reg(['TEXTO', 'TEXT'], (a) => {
   const n = toNumber(raw)
   if (isError(n)) return toText(raw)
   const pct = fmt.includes('%')
-  const grouping = fmt.includes(',')
-  const dot = fmt.split('.')[1]
-  const dec = dot ? (dot.match(/[0#]/g)?.length ?? 0) : 0
+  const grouping = fmt.includes('.')
+  const comma = fmt.lastIndexOf(',')
+  const dec = comma >= 0 ? (fmt.slice(comma + 1).match(/[0#]/g)?.length ?? 0) : 0
   const opts: Intl.NumberFormatOptions = { minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: grouping }
   if (pct) opts.style = 'percent'
   return new Intl.NumberFormat('pt-BR', opts).format(n)
@@ -805,6 +805,62 @@ reg(['NÚMEROVALOR', 'NUMEROVALOR', 'NUMBERVALUE'], (a) => {
   s = s.split(gsep).join('').split(dsep).join('.')
   const v = parseFloat(s)
   return isNaN(v) ? err('#VALOR!') : v
+})
+
+// ===== Matriciais dinâmicas (retornam Matrix) =====
+reg(['LINS', 'ROWS'], (a) => matrixOf(a[0]).rows)
+reg(['COLS', 'COLUNAS', 'COLUMNS'], (a) => matrixOf(a[0]).cols)
+reg(['TRANSPOR', 'TRANSPOSE'], (a) => {
+  const m = matrixOf(a[0])
+  const cells: CellValue[][] = []
+  for (let c = 0; c < m.cols; c++) {
+    const row: CellValue[] = []
+    for (let r = 0; r < m.rows; r++) row.push(m.cells[r][c])
+    cells.push(row)
+  }
+  return { kind: 'matrix', rows: m.cols, cols: m.rows, cells }
+})
+reg(['SEQUÊNCIA', 'SEQUENCIA', 'SEQUENCE'], (a) => {
+  const rows = toNumber(scalar(a[0])); if (isError(rows)) return rows
+  const cols = a[1] !== undefined ? toNumber(scalar(a[1])) : 1; if (isError(cols)) return cols
+  const start = a[2] !== undefined ? toNumber(scalar(a[2])) : 1; if (isError(start)) return start
+  const step = a[3] !== undefined ? toNumber(scalar(a[3])) : 1; if (isError(step)) return step
+  const R = Math.max(0, Math.trunc(rows)); const C = Math.max(0, Math.trunc(cols))
+  const cells: CellValue[][] = []; let v = start
+  for (let r = 0; r < R; r++) { const row: CellValue[] = []; for (let c = 0; c < C; c++) { row.push(v); v += step } cells.push(row) }
+  return { kind: 'matrix', rows: R, cols: C, cells }
+})
+reg(['ÚNICO', 'UNICO', 'UNIQUE'], (a) => {
+  const m = matrixOf(a[0])
+  const seen = new Set<string>(); const out: CellValue[][] = []
+  for (const row of m.cells) {
+    const key = row.map((v) => (typeof v === 'number' ? `#${v}` : toText(v).toUpperCase())).join('\u0001')
+    if (!seen.has(key)) { seen.add(key); out.push(row) }
+  }
+  return { kind: 'matrix', rows: out.length || 1, cols: m.cols, cells: out.length ? out : [[err('#N/D')]] }
+})
+reg(['CLASSIFICAR', 'ORDENAR', 'SORT'], (a) => {
+  const m = matrixOf(a[0])
+  const idx = a[1] !== undefined ? toNumber(scalar(a[1])) : 1; if (isError(idx)) return idx
+  const order = a[2] !== undefined ? toNumber(scalar(a[2])) : 1; if (isError(order)) return order
+  const ci = Math.max(0, Math.trunc(idx) - 1); const dir = order < 0 ? -1 : 1
+  const cells = [...m.cells].sort((x, y) => {
+    const p = x[ci] ?? null; const q = y[ci] ?? null
+    let c: number
+    if (typeof p === 'number' && typeof q === 'number') c = p < q ? -1 : p > q ? 1 : 0
+    else { const sa = toText(p).toUpperCase(); const sb = toText(q).toUpperCase(); c = sa < sb ? -1 : sa > sb ? 1 : 0 }
+    return c * dir
+  })
+  return { kind: 'matrix', rows: m.rows, cols: m.cols, cells }
+})
+reg(['FILTRO', 'FILTER'], (a) => {
+  const m = matrixOf(a[0]); const inc = matrixOf(a[1])
+  const keep = m.cells.filter((_, i) => {
+    const v = inc.cells[i]?.[0] ?? inc.cells[0]?.[i] ?? null
+    return toBool(v) === true
+  })
+  if (!keep.length) return a[2] !== undefined ? scalar(a[2]) : err('#N/D')
+  return { kind: 'matrix', rows: keep.length, cols: m.cols, cells: keep }
 })
 
 /** Lista de nomes de funções (para autocompletar / ajuda). */

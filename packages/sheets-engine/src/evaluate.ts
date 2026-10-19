@@ -2,9 +2,9 @@
 // com memoização por recálculo e detecção de referência circular.
 import { parseFormula, type Node } from './parser'
 import { parseA1, cellKey, parseKey } from './a1'
-import { type CellValue, isError, err } from './types'
+import { type CellValue, type CellError, isError, err } from './types'
 import { FUNCTIONS } from './functions'
-import { toNumber, toText, parseNumber, type ArgValue, type Matrix } from './runtime'
+import { toNumber, toText, parseNumber, isMatrix, type ArgValue, type Matrix } from './runtime'
 
 export interface CellEntry {
   row: number
@@ -16,6 +16,7 @@ export class SheetEngine {
   private cells = new Map<string, string>()
   private cache = new Map<string, CellValue>()
   private stack = new Set<string>()
+  private cur: { row: number; col: number } | null = null
   rows = 0
   cols = 0
 
@@ -64,12 +65,15 @@ export class SheetEngine {
       return null
     }
     this.stack.add(k)
+    const prevCur = this.cur
+    this.cur = { row, col }
     let v: CellValue
     try {
       v = this.evalRaw(raw)
     } catch {
       v = err('#VALOR!')
     }
+    this.cur = prevCur
     this.stack.delete(k)
     this.cache.set(k, v)
     return v
@@ -104,23 +108,39 @@ export class SheetEngine {
         if (node.op === '%') return v / 100
         return node.op === '-' ? -v : v
       }
-      case 'binary':
-        return this.binary(node)
+      case 'binary': {
+        const v = this.evalBinary(node)
+        return isMatrix(v) ? (v.cells[0]?.[0] ?? null) : v
+      }
       case 'call': {
-        const fn = FUNCTIONS[node.name.toUpperCase()]
-        if (!fn) return err('#NOME?')
-        return fn(node.args.map((x) => this.evalArg(x)))
+        const v = this.evalCall(node)
+        return isMatrix(v) ? (v.cells[0]?.[0] ?? null) : v
       }
     }
     return err('#VALOR!')
   }
 
-  private binary(node: Extract<Node, { type: 'binary' }>): CellValue {
-    const l = this.eval(node.left)
+  // Operadores com transmissão de array: se algum lado for matriz, aplica elemento a elemento.
+  private evalBinary(node: Extract<Node, { type: 'binary' }>): ArgValue {
+    const l = this.evalArg(node.left)
+    const r = this.evalArg(node.right)
+    if (isMatrix(l) || isMatrix(r)) {
+      const rows = Math.max(isMatrix(l) ? l.rows : 1, isMatrix(r) ? r.rows : 1)
+      const cols = Math.max(isMatrix(l) ? l.cols : 1, isMatrix(r) ? r.cols : 1)
+      const cells: CellValue[][] = []
+      for (let i = 0; i < rows; i++) {
+        const row: CellValue[] = []
+        for (let j = 0; j < cols; j++) row.push(this.binaryScalar(node.op, cellOf(l, i, j), cellOf(r, i, j)))
+        cells.push(row)
+      }
+      return { kind: 'matrix', rows, cols, cells }
+    }
+    return this.binaryScalar(node.op, l as CellValue, r as CellValue)
+  }
+
+  private binaryScalar(op: string, l: CellValue, r: CellValue): CellValue {
     if (isError(l)) return l
-    const r = this.eval(node.right)
     if (isError(r)) return r
-    const op = node.op
     if (op === '&') return toText(l) + toText(r)
     if (op === '=' || op === '<>' || op === '<' || op === '>' || op === '<=' || op === '>=') return this.compare(op, l, r)
     const ln = toNumber(l)
@@ -169,17 +189,104 @@ export class SheetEngine {
 
   private evalArg(node: Node): ArgValue {
     if (node.type === 'range') return this.rangeMatrix(node.from, node.to)
+    if (node.type === 'call') return this.evalCall(node)
+    if (node.type === 'binary') return this.evalBinary(node)
     return this.eval(node)
+  }
+
+  private evalCall(node: Extract<Node, { type: 'call' }>): ArgValue {
+    const name = node.name.toUpperCase()
+    const sp = this.special(name, node.args)
+    if (sp !== undefined) return sp
+    const fn = FUNCTIONS[name]
+    if (!fn) return err('#NOME?')
+    return fn(node.args.map((x) => this.evalArg(x)))
+  }
+
+  private toInt(node: Node): number | { error: CellError } {
+    const v = toNumber(this.eval(node))
+    return isError(v) ? v : Math.trunc(v)
+  }
+
+  private refOf(node: Node): { r1: number; c1: number; r2: number; c2: number } | null {
+    if (node.type === 'ref') {
+      const a = parseA1(node.ref)
+      return a ? { r1: a.row, c1: a.col, r2: a.row, c2: a.col } : null
+    }
+    if (node.type === 'range') {
+      const a = parseA1(node.from)
+      const b = parseA1(node.to)
+      if (!a || !b) return null
+      return { r1: Math.min(a.row, b.row), c1: Math.min(a.col, b.col), r2: Math.max(a.row, b.row), c2: Math.max(a.col, b.col) }
+    }
+    return null
+  }
+
+  // Funções que precisam da referência (não do valor) ou da célula atual.
+  private special(name: string, args: Node[]): ArgValue | undefined {
+    switch (name) {
+      case 'LIN':
+      case 'LINHA':
+      case 'ROW': {
+        if (!args.length) return this.cur ? this.cur.row + 1 : err('#REF!')
+        const r = this.refOf(args[0])
+        return r ? r.r1 + 1 : err('#REF!')
+      }
+      case 'COL':
+      case 'COLUNA':
+      case 'COLUMN': {
+        if (!args.length) return this.cur ? this.cur.col + 1 : err('#REF!')
+        const r = this.refOf(args[0])
+        return r ? r.c1 + 1 : err('#REF!')
+      }
+      case 'DESLOC':
+      case 'OFFSET': {
+        if (args.length < 3) return err('#REF!')
+        const base = this.refOf(args[0])
+        if (!base) return err('#REF!')
+        const dr = this.toInt(args[1])
+        if (isError(dr)) return dr
+        const dc = this.toInt(args[2])
+        if (isError(dc)) return dc
+        const h = args[3] !== undefined ? this.toInt(args[3]) : base.r2 - base.r1 + 1
+        if (isError(h)) return h
+        const w = args[4] !== undefined ? this.toInt(args[4]) : base.c2 - base.c1 + 1
+        if (isError(w)) return w
+        const r1 = base.r1 + dr
+        const c1 = base.c1 + dc
+        if (r1 < 0 || c1 < 0 || h < 1 || w < 1) return err('#REF!')
+        return this.matrixAt(r1, c1, r1 + h - 1, c1 + w - 1)
+      }
+      case 'INDIRETO':
+      case 'INDIRECT': {
+        if (!args.length) return err('#REF!')
+        const t = toText(this.eval(args[0])).trim().replace(/\$/g, '')
+        const parts = t.split(':')
+        if (parts.length === 2) {
+          const a = parseA1(parts[0])
+          const b = parseA1(parts[1])
+          if (!a || !b) return err('#REF!')
+          return this.matrixAt(Math.min(a.row, b.row), Math.min(a.col, b.col), Math.max(a.row, b.row), Math.max(a.col, b.col))
+        }
+        const a = parseA1(t)
+        return a ? this.getValue(a.row, a.col) : err('#REF!')
+      }
+      case 'ÉREF':
+      case 'EREF':
+      case 'ISREF':
+        return args.length > 0 && this.refOf(args[0]) !== null
+    }
+    return undefined
   }
 
   private rangeMatrix(from: string, to: string): Matrix {
     const a = parseA1(from)
     const b = parseA1(to)
     if (!a || !b) return { kind: 'matrix', rows: 1, cols: 1, cells: [[err('#REF!')]] }
-    const r1 = Math.min(a.row, b.row)
-    const r2 = Math.max(a.row, b.row)
-    const c1 = Math.min(a.col, b.col)
-    const c2 = Math.max(a.col, b.col)
+    return this.matrixAt(Math.min(a.row, b.row), Math.min(a.col, b.col), Math.max(a.row, b.row), Math.max(a.col, b.col))
+  }
+
+  private matrixAt(r1: number, c1: number, r2: number, c2: number): Matrix {
     const cells: CellValue[][] = []
     for (let r = r1; r <= r2; r++) {
       const row: CellValue[] = []
@@ -188,4 +295,14 @@ export class SheetEngine {
     }
     return { kind: 'matrix', rows: r2 - r1 + 1, cols: c2 - c1 + 1, cells }
   }
+}
+
+// Seleciona o valor (i,j) de um argumento, transmitindo escalares e vetores linha/coluna.
+function cellOf(v: ArgValue, i: number, j: number): CellValue {
+  if (isMatrix(v)) {
+    const r = v.rows === 1 ? 0 : i
+    const c = v.cols === 1 ? 0 : j
+    return v.cells[r]?.[c] ?? null
+  }
+  return v
 }
