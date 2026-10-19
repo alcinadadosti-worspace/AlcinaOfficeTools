@@ -81,7 +81,7 @@ export function App(): ReactNode {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16, marginTop: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 300px))', justifyContent: 'center', gap: 14, marginTop: 24 }}>
           {APPS.map((a) => (
             <button
               key={a.key}
