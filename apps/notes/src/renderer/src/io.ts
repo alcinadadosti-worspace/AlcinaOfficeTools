@@ -4,6 +4,10 @@ export interface Note {
   id: string
   title: string
   doc: unknown
+  /** Seção (caderno) a que a nota pertence. */
+  section?: string
+  /** Marcadores/etiquetas. */
+  tags?: string[]
 }
 
 export interface Notebook {
@@ -26,8 +30,8 @@ export function emptyDoc(): unknown {
   return { type: 'doc', content: [{ type: 'paragraph' }] }
 }
 
-export function newNote(title: string): Note {
-  return { id: uid(), title, doc: emptyDoc() }
+export function newNote(title: string, section = 'Geral'): Note {
+  return { id: uid(), title, doc: emptyDoc(), section, tags: [] }
 }
 
 export async function saveNotebook(notes: Note[], suggested: string): Promise<string | null> {

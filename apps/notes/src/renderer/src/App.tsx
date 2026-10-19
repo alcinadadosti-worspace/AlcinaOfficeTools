@@ -57,6 +57,7 @@ export function App(): ReactNode {
   const [notes, setNotes] = useState<Note[]>(() => [newNote('Nota 1')])
   const [activeId, setActiveId] = useState<string>(notes[0].id)
   const [search, setSearch] = useState('')
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [path, setPath] = useState<string | null>(null)
   const [snap, setSnap] = useState<Snapshot>(EMPTY)
   const [fr, setFr] = useState<{ open: boolean; find: string; replace: string; matchCase: boolean }>({ open: false, find: '', replace: '', matchCase: false })
@@ -93,7 +94,7 @@ export function App(): ReactNode {
   const addNote = (): void => {
     const api = apiRef.current
     if (!api) return
-    const note = newNote(`Nota ${notes.length + 1}`)
+    const note = newNote(`Nota ${notes.length + 1}`, active.section ?? 'Geral')
     setNotes([...synced(), note])
     api.setJSON(note.doc)
     setActiveId(note.id)
@@ -112,6 +113,24 @@ export function App(): ReactNode {
   }
 
   const setTitle = (t: string): void => setNotes((ns) => ns.map((n) => (n.id === activeId ? { ...n, title: t } : n)))
+  const moveSection = (section: string): void => setNotes((ns) => ns.map((n) => (n.id === activeId ? { ...n, section } : n)))
+  const addSection = (): void => {
+    const api = apiRef.current
+    if (!api) return
+    const existing = new Set(notes.map((n) => n.section ?? 'Geral'))
+    let i = 1
+    while (existing.has(`Seção ${i}`)) i++
+    const note = newNote('Nota 1', `Seção ${i}`)
+    setNotes([...synced(), note])
+    api.setJSON(note.doc)
+    setActiveId(note.id)
+  }
+  const addTag = (t: string): void => {
+    const tag = t.trim()
+    if (!tag) return
+    setNotes((ns) => ns.map((n) => (n.id === activeId ? { ...n, tags: (n.tags ?? []).includes(tag) ? n.tags : [...(n.tags ?? []), tag] } : n)))
+  }
+  const removeTag = (t: string): void => setNotes((ns) => ns.map((n) => (n.id === activeId ? { ...n, tags: (n.tags ?? []).filter((x) => x !== t) } : n)))
 
   const doSave = async (): Promise<void> => {
     const list = synced()
@@ -145,7 +164,12 @@ export function App(): ReactNode {
   )
 
   const q = search.trim().toLowerCase()
-  const visible = q ? notes.filter((n) => n.title.toLowerCase().includes(q)) : notes
+  const visible = notes.filter((n) => (!q || n.title.toLowerCase().includes(q)) && (!tagFilter || (n.tags ?? []).includes(tagFilter)))
+  const sections = Array.from(new Set(notes.map((n) => n.section ?? 'Geral')))
+  const allTags = Array.from(new Set(notes.flatMap((n) => n.tags ?? []))).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const grouped = sections.map((sec) => ({ section: sec, items: visible.filter((n) => (n.section ?? 'Geral') === sec) })).filter((g) => g.items.length)
+  const activeSection = active.section ?? 'Geral'
+  const activeTags = active.tags ?? []
 
   const ribbon: RibbonTab[] = [
     {
@@ -163,6 +187,7 @@ export function App(): ReactNode {
           label: 'Notas',
           items: [
             { key: 'new', label: 'Nova nota', icon: <DocumentAdd24Regular />, onClick: addNote },
+            { key: 'newsec', label: 'Nova seção', icon: txt('§'), onClick: addSection },
             { key: 'del', label: 'Excluir', icon: <Delete24Regular />, disabled: notes.length <= 1, onClick: () => removeNote(activeId) }
           ]
         },
@@ -234,45 +259,75 @@ export function App(): ReactNode {
       )}
       <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
         <aside style={{ width: 260, flex: 'none', borderRight: '1px solid var(--ao-border)', background: 'var(--ao-surface)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ padding: 8 }}>
+          <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <Input size="small" placeholder="Pesquisar notas…" value={search} onChange={(_, d) => setSearch(d.value)} style={{ width: '100%' }} />
+            {allTags.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {allTags.map((t) => (
+                  <button key={t} onClick={() => setTagFilter((f) => (f === t ? null : t))} style={{ fontSize: 11, padding: '1px 7px', borderRadius: 100, border: '1px solid var(--ao-border)', cursor: 'pointer', background: tagFilter === t ? 'var(--ao-green)' : 'var(--ao-surface-2)', color: tagFilter === t ? '#fff' : 'var(--ao-text-2)' }}>
+                    #{t}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div style={{ flex: 1, overflow: 'auto' }}>
-            {visible.map((n) => {
-              const on = n.id === activeId
-              return (
-                <div
-                  key={n.id}
-                  onClick={() => selectNote(n.id)}
-                  style={{
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    borderLeft: on ? '3px solid var(--ao-green)' : '3px solid transparent',
-                    background: on ? 'var(--ao-green-soft)' : 'transparent',
-                    fontSize: 13,
-                    fontWeight: on ? 600 : 400,
-                    color: 'var(--ao-text)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {n.title || 'Sem título'}
-                </div>
-              )
-            })}
-            {visible.length === 0 && <div style={{ padding: 16, color: 'var(--ao-text-3)', fontSize: 12 }}>Nenhuma nota encontrada.</div>}
+            {grouped.map((g) => (
+              <div key={g.section}>
+                <div style={{ padding: '7px 12px 2px', fontSize: 11, fontWeight: 700, color: 'var(--ao-text-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{g.section}</div>
+                {g.items.map((n) => {
+                  const on = n.id === activeId
+                  return (
+                    <div
+                      key={n.id}
+                      onClick={() => selectNote(n.id)}
+                      style={{ padding: '7px 12px', cursor: 'pointer', borderLeft: on ? '3px solid var(--ao-green)' : '3px solid transparent', background: on ? 'var(--ao-green-soft)' : 'transparent', fontSize: 13, fontWeight: on ? 600 : 400, color: 'var(--ao-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    >
+                      {n.title || 'Sem título'}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+            {grouped.length === 0 && <div style={{ padding: 16, color: 'var(--ao-text-3)', fontSize: 12 }}>Nenhuma nota encontrada.</div>}
           </div>
         </aside>
 
         <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--ao-surface-2)' }}>
-          <div style={{ padding: '10px 16px', background: 'var(--ao-bg)', borderBottom: '1px solid var(--ao-border)', flex: 'none' }}>
+          <div style={{ padding: '10px 16px', background: 'var(--ao-bg)', borderBottom: '1px solid var(--ao-border)', flex: 'none', display: 'flex', flexDirection: 'column', gap: 7 }}>
             <input
               value={active.title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Título da nota"
               style={{ width: '100%', border: 'none', outline: 'none', fontSize: 20, fontWeight: 600, background: 'transparent', color: 'var(--ao-text)' }}
             />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <select value={activeSection} onChange={(e) => moveSection(e.target.value)} title="Seção" style={{ fontSize: 12, padding: '2px 6px', border: '1px solid var(--ao-border)', borderRadius: 4, background: 'var(--ao-surface)', color: 'var(--ao-text)' }}>
+                {sections.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              {activeTags.map((t) => (
+                <span key={t} style={{ fontSize: 11, padding: '1px 4px 1px 8px', borderRadius: 100, background: 'var(--ao-green-soft)', color: 'var(--ao-green-strong)', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  #{t}
+                  <button onClick={() => removeTag(t)} aria-label="Remover marcador" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'inherit', fontSize: 13, lineHeight: 1 }}>
+                    ×
+                  </button>
+                </span>
+              ))}
+              <input
+                placeholder="+ marcador"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    addTag((e.target as HTMLInputElement).value)
+                    ;(e.target as HTMLInputElement).value = ''
+                  }
+                }}
+                style={{ width: 92, fontSize: 12, border: '1px solid var(--ao-border)', borderRadius: 4, padding: '2px 6px', background: 'transparent', color: 'var(--ao-text)' }}
+              />
+            </div>
           </div>
           <div className="ao-doc-host" style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '20px 28px', background: 'var(--ao-bg)' }}>
             <Editor apiRef={apiRef} onState={setSnap} />
