@@ -1,6 +1,6 @@
 // AlcinaNotes: anotações com lista de notas e aba Início completa (editor compartilhado).
 import { useEffect, useRef, useState, type ReactNode, type JSX } from 'react'
-import { MenuList, MenuItem, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Button, Input, Field, Checkbox } from '@fluentui/react-components'
+import { MenuList, MenuItem, Input } from '@fluentui/react-components'
 import {
   DocumentAdd24Regular,
   FolderOpen24Regular,
@@ -33,7 +33,7 @@ import {
 } from '@fluentui/react-icons'
 import type { Command } from 'prosemirror-state'
 import { AppShell, type RibbonTab } from '@alcina/ui-shell'
-import { Editor, cmd, setColor, setHighlight, setFontSize, setFontFamily, setLineHeight, changeCase as cmdCase, type EditorApi, type Snapshot } from '@alcina/editor'
+import { Editor, FindBar, cmd, setColor, setHighlight, setFontSize, setFontFamily, setLineHeight, changeCase as cmdCase, type EditorApi, type Snapshot } from '@alcina/editor'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
 import { newNote, saveNotebook, openNotebook, baseName, emptyDoc, type Note } from './io'
@@ -60,7 +60,7 @@ export function App(): ReactNode {
   const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [path, setPath] = useState<string | null>(null)
   const [snap, setSnap] = useState<Snapshot>(EMPTY)
-  const [fr, setFr] = useState<{ open: boolean; find: string; replace: string; matchCase: boolean }>({ open: false, find: '', replace: '', matchCase: false })
+  const [findOpen, setFindOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [version, setVersion] = useState('')
@@ -68,7 +68,14 @@ export function App(): ReactNode {
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
     const off = getUpdater()?.onStatus(setStatus)
-    return () => off?.()
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'h')) {
+        e.preventDefault()
+        setFindOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => { off?.(); window.removeEventListener('keydown', onKey) }
   }, [])
 
   const active = notes.find((n) => n.id === activeId) ?? notes[0]
@@ -145,12 +152,6 @@ export function App(): ReactNode {
     setActiveId(r.notes[0].id)
     apiRef.current?.setJSON(r.notes[0].doc)
     setPath(r.path)
-  }
-
-  const runFindReplace = (): void => {
-    const n = apiRef.current?.replaceAll(fr.find, fr.replace, fr.matchCase) ?? 0
-    setNotice(`${n} substituição(ões) feita(s).`)
-    setFr((f) => ({ ...f, open: false }))
   }
 
   const colorMenu = (apply: (c: string) => Command, list: [string, string][]): ReactNode => (
@@ -235,7 +236,7 @@ export function App(): ReactNode {
         {
           label: 'Edição',
           items: [
-            { key: 'find', label: 'Localizar', icon: <Search24Regular />, onClick: () => setFr((f) => ({ ...f, open: true })) },
+            { key: 'find', label: 'Localizar', icon: <Search24Regular />, onClick: () => setFindOpen(true) },
             { key: 'undo', label: 'Desfazer', icon: <ArrowUndo24Regular />, disabled: !snap.canUndo, onClick: () => exec(cmd.undo) },
             { key: 'redo', label: 'Refazer', icon: <ArrowRedo24Regular />, disabled: !snap.canRedo, onClick: () => exec(cmd.redo) }
           ]
@@ -329,34 +330,12 @@ export function App(): ReactNode {
               />
             </div>
           </div>
+          {findOpen && <FindBar apiRef={apiRef} onClose={() => setFindOpen(false)} />}
           <div className="ao-doc-host" style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '20px 28px', background: 'var(--ao-bg)' }}>
             <Editor apiRef={apiRef} onState={setSnap} />
           </div>
         </main>
       </div>
-
-      <Dialog open={fr.open} onOpenChange={(_, d) => setFr((f) => ({ ...f, open: d.open }))}>
-        <DialogSurface style={{ maxWidth: 440 }}>
-          <DialogBody>
-            <DialogTitle>Localizar e substituir</DialogTitle>
-            <DialogContent>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <Field label="Localizar">
-                  <Input value={fr.find} onChange={(_, d) => setFr((f) => ({ ...f, find: d.value }))} />
-                </Field>
-                <Field label="Substituir por">
-                  <Input value={fr.replace} onChange={(_, d) => setFr((f) => ({ ...f, replace: d.value }))} />
-                </Field>
-                <Checkbox label="Diferenciar maiúsculas de minúsculas" checked={fr.matchCase} onChange={(_, d) => setFr((f) => ({ ...f, matchCase: !!d.checked }))} />
-              </div>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setFr((f) => ({ ...f, open: false }))}>Cancelar</Button>
-              <Button appearance="primary" onClick={runFindReplace} disabled={!fr.find}>Substituir tudo</Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
     </AppShell>
   )
 }

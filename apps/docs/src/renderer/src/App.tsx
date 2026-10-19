@@ -40,7 +40,7 @@ import type { Command } from 'prosemirror-state'
 import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
-import { Editor, cmd, setColor, setHighlight, setFontSize, setFontFamily, setLineHeight, changeCase as cmdCase, insertImage, insertTable, table, type EditorApi, type Snapshot } from '@alcina/editor'
+import { Editor, FindBar, cmd, setColor, setHighlight, setFontSize, setFontFamily, setLineHeight, changeCase as cmdCase, insertImage, insertTable, table, type EditorApi, type Snapshot } from '@alcina/editor'
 import { saveDoc, openDoc, importDocx, exportDocx, exportPdf, baseName } from './io'
 
 const EMPTY: Snapshot = { strong: false, em: false, underline: false, strike: false, sub: false, sup: false, heading: 0, align: null, canUndo: false, canRedo: false }
@@ -62,7 +62,7 @@ export function App(): ReactNode {
   const imgInput = useRef<HTMLInputElement>(null)
   const [snap, setSnap] = useState<Snapshot>(EMPTY)
   const [path, setPath] = useState<string | null>(null)
-  const [fr, setFr] = useState<{ open: boolean; find: string; replace: string; matchCase: boolean }>({ open: false, find: '', replace: '', matchCase: false })
+  const [findOpen, setFindOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [version, setVersion] = useState('')
@@ -73,7 +73,14 @@ export function App(): ReactNode {
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
     const off = getUpdater()?.onStatus(setStatus)
-    return () => off?.()
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'h')) {
+        e.preventDefault()
+        setFindOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => { off?.(); window.removeEventListener('keydown', onKey) }
   }, [])
 
   const exec = (c: Command): void => void apiRef.current?.exec(c)
@@ -82,12 +89,6 @@ export function App(): ReactNode {
     if (api) void fn(api)
   }
   const name = baseName(path)
-
-  const runFindReplace = (): void => {
-    const n = apiRef.current?.replaceAll(fr.find, fr.replace, fr.matchCase) ?? 0
-    setNotice(`${n} substituição(ões) feita(s).`)
-    setFr((f) => ({ ...f, open: false }))
-  }
 
   const onPickImage = (e: ChangeEvent<HTMLInputElement>): void => {
     const f = e.target.files?.[0]
@@ -162,7 +163,7 @@ export function App(): ReactNode {
         {
           label: 'Edição',
           items: [
-            { key: 'find', label: 'Localizar', icon: <Search24Regular />, onClick: () => setFr((f) => ({ ...f, open: true })) },
+            { key: 'find', label: 'Localizar', icon: <Search24Regular />, onClick: () => setFindOpen(true) },
             { key: 'undo', label: 'Desfazer', icon: <ArrowUndo24Regular />, disabled: !snap.canUndo, onClick: () => exec(cmd.undo) },
             { key: 'redo', label: 'Refazer', icon: <ArrowRedo24Regular />, disabled: !snap.canRedo, onClick: () => exec(cmd.redo) }
           ]
@@ -267,6 +268,11 @@ export function App(): ReactNode {
 
   return (
     <AppShell appName={`${name} — Documento`} headerRight={version ? <span style={{ fontSize: 12, opacity: 0.85 }}>v{version}</span> : null} ribbon={ribbon} update={{ status, onInstall: () => void getUpdater()?.install() }}>
+      {findOpen && (
+        <div style={{ position: 'sticky', top: 0, zIndex: 30 }}>
+          <FindBar apiRef={apiRef} onClose={() => setFindOpen(false)} />
+        </div>
+      )}
       {notice && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px', background: 'var(--ao-green-soft)', borderBottom: '1px solid var(--ao-border)', fontSize: 12, flex: 'none' }}>
           <span style={{ flex: 1 }}>{notice}</span>
@@ -281,29 +287,6 @@ export function App(): ReactNode {
           {(pageSetup.footer || pageSetup.pageNumbers) && <div style={{ textAlign: 'center', color: '#8a8a8a', fontSize: 12, borderTop: '1px solid #ededed', paddingTop: 6, marginTop: 14 }}>{pageSetup.footer}{pageSetup.pageNumbers ? ' · 1' : ''}</div>}
         </div>
       </div>
-
-      <Dialog open={fr.open} onOpenChange={(_, d) => setFr((f) => ({ ...f, open: d.open }))}>
-        <DialogSurface style={{ maxWidth: 440 }}>
-          <DialogBody>
-            <DialogTitle>Localizar e substituir</DialogTitle>
-            <DialogContent>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <Field label="Localizar">
-                  <Input value={fr.find} onChange={(_, d) => setFr((f) => ({ ...f, find: d.value }))} />
-                </Field>
-                <Field label="Substituir por">
-                  <Input value={fr.replace} onChange={(_, d) => setFr((f) => ({ ...f, replace: d.value }))} />
-                </Field>
-                <Checkbox label="Diferenciar maiúsculas de minúsculas" checked={fr.matchCase} onChange={(_, d) => setFr((f) => ({ ...f, matchCase: !!d.checked }))} />
-              </div>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setFr((f) => ({ ...f, open: false }))}>Cancelar</Button>
-              <Button appearance="primary" onClick={runFindReplace} disabled={!fr.find}>Substituir tudo</Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
 
       <Dialog open={hfOpen} onOpenChange={(_, d) => setHfOpen(d.open)}>
         <DialogSurface style={{ maxWidth: 440 }}>

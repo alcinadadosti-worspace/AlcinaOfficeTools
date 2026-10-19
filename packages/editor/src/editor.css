@@ -36,3 +36,14 @@
   border-top: 1px solid var(--ao-border);
   margin: 1em 0;
 }
+
+/* Localizar: realce das ocorrências */
+.ao-doc-host .ProseMirror .ao-search-hit {
+  background: #fff1a8;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px #e8d072;
+}
+.ao-doc-host .ProseMirror .ao-search-hit-current {
+  background: #ffb02e;
+  box-shadow: 0 0 0 1px #c9821a;
+}

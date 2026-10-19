@@ -1,15 +1,21 @@
 // Componente React que hospeda o editor ProseMirror e expõe uma API imperativa.
 import { useEffect, useRef, type ReactNode, type MutableRefObject } from 'react'
-import { EditorState, type Command } from 'prosemirror-state'
+import { EditorState, TextSelection, type Command } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import { DOMParser as PMDOMParser, DOMSerializer, type MarkType } from 'prosemirror-model'
 import { history, undoDepth, redoDepth } from 'prosemirror-history'
 import { columnResizing, tableEditing } from 'prosemirror-tables'
 import { schema } from './schema'
 import { editorKeymap, baseKeymapPlugin } from './commands'
+import { searchPlugin, searchKey } from './search'
 import { TaskItemView } from './taskview'
 import { docToBlocks } from './pmdocx'
 import type { DocBlock } from './docmodel'
+
+export interface SearchInfo {
+  count: number
+  index: number
+}
 
 export interface Snapshot {
   strong: boolean
@@ -32,6 +38,13 @@ export interface EditorApi {
   getBlocks(): DocBlock[]
   getPrintHtml(): string
   replaceAll(find: string, replace: string, matchCase: boolean): number
+  /** Localiza e realça; posiciona na 1ª ocorrência. Retorna total e posição atual (1-based). */
+  search(query: string, caseSensitive: boolean): SearchInfo
+  findNext(): SearchInfo
+  findPrev(): SearchInfo
+  /** Substitui a ocorrência atual e avança. */
+  replaceCurrent(replaceWith: string): SearchInfo
+  clearSearch(): void
   stats(): { words: number; chars: number; charsNoSpaces: number }
   focus(): void
 }
@@ -67,7 +80,7 @@ export function Editor({ apiRef, onState }: { apiRef: MutableRefObject<EditorApi
   useEffect(() => {
     const doc = schema.node('doc', null, [schema.node('paragraph')])
     const view = new EditorView(host.current!, {
-      state: EditorState.create({ doc, plugins: [columnResizing(), tableEditing(), history(), editorKeymap(), baseKeymapPlugin()] }),
+      state: EditorState.create({ doc, plugins: [columnResizing(), tableEditing(), history(), searchPlugin(), editorKeymap(), baseKeymapPlugin()] }),
       nodeViews: {
         task_item: (node, view, getPos) => new TaskItemView(node, view, getPos as () => number | undefined)
       },
@@ -81,6 +94,17 @@ export function Editor({ apiRef, onState }: { apiRef: MutableRefObject<EditorApi
     const load = (node: ReturnType<typeof schema.node>): void => {
       view.updateState(EditorState.create({ doc: node, plugins: view.state.plugins }))
       onState(snapshotOf(view.state))
+    }
+    const searchInfo = (): SearchInfo => {
+      const s = searchKey.getState(view.state)
+      return { count: s?.matches.length ?? 0, index: s && s.index >= 0 ? s.index + 1 : 0 }
+    }
+    // Seleciona e rola até a ocorrência atual sem roubar o foco do campo de busca.
+    const selectCurrent = (): void => {
+      const s = searchKey.getState(view.state)
+      if (!s || s.index < 0) return
+      const m = s.matches[s.index]
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, m.from, m.to)).scrollIntoView())
     }
     apiRef.current = {
       exec(command) {
@@ -112,8 +136,42 @@ export function Editor({ apiRef, onState }: { apiRef: MutableRefObject<EditorApi
         const tr = view.state.tr
         for (let m = matches.length - 1; m >= 0; m--) tr.insertText(replaceWith, matches[m].from, matches[m].to)
         view.dispatch(tr)
+        view.dispatch(view.state.tr.setMeta(searchKey, { type: 'clear' }))
         onState(snapshotOf(view.state))
         return matches.length
+      },
+      search: (query, caseSensitive) => {
+        view.dispatch(view.state.tr.setMeta(searchKey, { type: 'set', query, caseSensitive, index: 0 }))
+        selectCurrent()
+        return searchInfo()
+      },
+      findNext: () => {
+        view.dispatch(view.state.tr.setMeta(searchKey, { type: 'next' }))
+        selectCurrent()
+        return searchInfo()
+      },
+      findPrev: () => {
+        view.dispatch(view.state.tr.setMeta(searchKey, { type: 'prev' }))
+        selectCurrent()
+        return searchInfo()
+      },
+      replaceCurrent: (replaceWith) => {
+        const s = searchKey.getState(view.state)
+        if (!s || s.index < 0) return searchInfo()
+        const m = s.matches[s.index]
+        const after = m.from + replaceWith.length
+        view.dispatch(view.state.tr.insertText(replaceWith, m.from, m.to))
+        const s2 = searchKey.getState(view.state)
+        if (s2 && s2.matches.length) {
+          let ni = s2.matches.findIndex((x) => x.from >= after)
+          if (ni < 0) ni = 0
+          view.dispatch(view.state.tr.setMeta(searchKey, { type: 'setIndex', index: ni }))
+          selectCurrent()
+        }
+        return searchInfo()
+      },
+      clearSearch: () => {
+        view.dispatch(view.state.tr.setMeta(searchKey, { type: 'clear' }))
       },
       stats: () => {
         const text = view.state.doc.textBetween(0, view.state.doc.content.size, ' ', ' ')
