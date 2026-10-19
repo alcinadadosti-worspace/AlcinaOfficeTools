@@ -703,5 +703,109 @@ reg(['ÉNÃOTEXTO', 'ENAOTEXTO', 'ISNONTEXT'], (a) => typeof scalar(a[0]) !== 's
 reg(['N'], (a) => { const v = scalar(a[0]); if (typeof v === 'number') return v; if (typeof v === 'boolean') return v ? 1 : 0; if (isError(v)) return v; return 0 })
 reg(['TIPO', 'TYPE'], (a) => { const v = scalar(a[0]); if (typeof v === 'number') return 1; if (typeof v === 'string') return 2; if (typeof v === 'boolean') return 4; if (isError(v)) return 16; return 1 })
 
+// ===== Ampliação da biblioteca (v0.6): distribuições, engenharia/base, mais estatística =====
+
+function erf(x: number): number {
+  const t = 1 / (1 + 0.3275911 * Math.abs(x))
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x)
+  return x >= 0 ? y : -y
+}
+function normCdf(z: number): number { return 0.5 * (1 + erf(z / Math.SQRT2)) }
+function normPdf(z: number): number { return Math.exp(-(z * z) / 2) / Math.sqrt(2 * Math.PI) }
+function normInv(p: number): number {
+  if (p <= 0) return -Infinity
+  if (p >= 1) return Infinity
+  const a = [-39.6968302866538, 220.946098424521, -275.928510446969, 138.357751867269, -30.6647980661472, 2.50662827745924]
+  const b = [-54.4760987982241, 161.585836858041, -155.698979859887, 66.8013118877197, -13.2806815528857]
+  const c = [-0.00778489400243029, -0.322396458041136, -2.40075827716184, -2.54973253934373, 4.37466414146497, 2.93816398269878]
+  const d = [0.00778469570904146, 0.32246712907004, 2.445134137143, 3.75440866190742]
+  const pl = 0.02425; const ph = 1 - pl
+  let q: number; let r: number
+  if (p < pl) { q = Math.sqrt(-2 * Math.log(p)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1) }
+  if (p <= ph) { q = p - 0.5; r = q * q; return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1) }
+  q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
+}
+function dec2base(n: number, radix: number, width: number, places?: number): CellValue {
+  n = Math.trunc(n)
+  let s: string
+  if (n < 0) { const full = Math.pow(radix, width); if (n < -full / 2) return err('#NÚM!'); s = (full + n).toString(radix).toUpperCase() } else s = n.toString(radix).toUpperCase()
+  if (places !== undefined && n >= 0 && s.length < places) s = '0'.repeat(places - s.length) + s
+  return s
+}
+function base2dec(s: string, radix: number, width: number): CellValue {
+  if (!s) return 0
+  const v = parseInt(s, radix)
+  if (isNaN(v)) return err('#NÚM!')
+  const full = Math.pow(radix, width)
+  return v >= full / 2 ? v - full : v
+}
+
+// --- Distribuições estatísticas ---
+reg(['DIST.NORM.N', 'DIST.NORM', 'NORM.DIST', 'NORMDIST'], (a) => {
+  const x = n1(a); if (isError(x)) return x; const m = n1(a, 1); if (isError(m)) return m; const sd = n1(a, 2); if (isError(sd)) return sd
+  if (sd <= 0) return err('#NÚM!')
+  const cum = a[3] === undefined || toBool(scalar(a[3])) === true
+  const z = (x - m) / sd
+  return cum ? normCdf(z) : normPdf(z) / sd
+})
+reg(['DIST.NORMP.N', 'NORM.S.DIST', 'NORMSDIST'], (a) => { const z = n1(a); if (isError(z)) return z; const cum = a[1] === undefined || toBool(scalar(a[1])) === true; return cum ? normCdf(z) : normPdf(z) })
+reg(['INV.NORM', 'INV.NORM.N', 'NORM.INV', 'NORMINV'], (a) => { const p = n1(a); if (isError(p)) return p; const m = n1(a, 1); if (isError(m)) return m; const sd = n1(a, 2); if (isError(sd)) return sd; if (p <= 0 || p >= 1 || sd <= 0) return err('#NÚM!'); return m + sd * normInv(p) })
+reg(['INV.NORMP.N', 'NORM.S.INV', 'NORMSINV'], (a) => { const p = n1(a); if (isError(p)) return p; if (p <= 0 || p >= 1) return err('#NÚM!'); return normInv(p) })
+reg(['DIST.EXPON.N', 'DIST.EXPON', 'EXPON.DIST', 'EXPONDIST'], (a) => {
+  const x = n1(a); if (isError(x)) return x; const lam = n1(a, 1); if (isError(lam)) return lam
+  if (lam <= 0) return err('#NÚM!'); if (x < 0) return 0
+  const cum = a[2] === undefined || toBool(scalar(a[2])) === true
+  return cum ? 1 - Math.exp(-lam * x) : lam * Math.exp(-lam * x)
+})
+
+// --- Estatística descritiva adicional ---
+reg(['DESVQ', 'DEVSQ'], (a) => { const ns = nums(a); if (!Array.isArray(ns)) return ns; if (!ns.length) return 0; const m = ns.reduce((s, x) => s + x, 0) / ns.length; return ns.reduce((s, x) => s + (x - m) * (x - m), 0) })
+reg(['DISTORÇÃO', 'DISTORCAO', 'SKEW'], (a) => {
+  const ns = nums(a); if (!Array.isArray(ns)) return ns; const n = ns.length; if (n < 3) return err('#DIV/0!')
+  const m = ns.reduce((s, x) => s + x, 0) / n
+  const sd = Math.sqrt(ns.reduce((s, x) => s + (x - m) * (x - m), 0) / (n - 1))
+  if (sd === 0) return err('#DIV/0!')
+  const sum = ns.reduce((s, x) => s + Math.pow((x - m) / sd, 3), 0)
+  return (n / ((n - 1) * (n - 2))) * sum
+})
+reg(['CURT', 'KURT'], (a) => {
+  const ns = nums(a); if (!Array.isArray(ns)) return ns; const n = ns.length; if (n < 4) return err('#DIV/0!')
+  const m = ns.reduce((s, x) => s + x, 0) / n
+  const sd = Math.sqrt(ns.reduce((s, x) => s + (x - m) * (x - m), 0) / (n - 1))
+  if (sd === 0) return err('#DIV/0!')
+  const sum = ns.reduce((s, x) => s + Math.pow((x - m) / sd, 4), 0)
+  return (n * (n + 1) / ((n - 1) * (n - 2) * (n - 3))) * sum - (3 * (n - 1) * (n - 1)) / ((n - 2) * (n - 3))
+})
+
+// --- Engenharia: conversão de base e comparação ---
+reg(['DECABIN', 'DEC2BIN'], (a) => { const n = n1(a); if (isError(n)) return n; const p = a[1] !== undefined ? n1(a, 1) : 0; if (isError(p)) return p; return dec2base(n, 2, 10, p) })
+reg(['BINADEC', 'BIN2DEC'], (a) => base2dec(toText(scalar(a[0])), 2, 10))
+reg(['DECAHEX', 'DEC2HEX'], (a) => { const n = n1(a); if (isError(n)) return n; const p = a[1] !== undefined ? n1(a, 1) : 0; if (isError(p)) return p; return dec2base(n, 16, 10, p) })
+reg(['HEXADEC', 'HEX2DEC'], (a) => base2dec(toText(scalar(a[0])), 16, 10))
+reg(['DECAOCT', 'DEC2OCT'], (a) => { const n = n1(a); if (isError(n)) return n; const p = a[1] !== undefined ? n1(a, 1) : 0; if (isError(p)) return p; return dec2base(n, 8, 10, p) })
+reg(['OCTADEC', 'OCT2DEC'], (a) => base2dec(toText(scalar(a[0])), 8, 10))
+reg(['DELTA'], (a) => { const x = n1(a); if (isError(x)) return x; const y = a[1] !== undefined ? n1(a, 1) : 0; if (isError(y)) return y; return x === y ? 1 : 0 })
+reg(['DEGRAU', 'GESTEP'], (a) => { const x = n1(a); if (isError(x)) return x; const step = a[1] !== undefined ? n1(a, 1) : 0; if (isError(step)) return step; return x >= step ? 1 : 0 })
+
+// --- Mais matemática e texto ---
+reg(['ARÁBICO', 'ARABICO', 'ARABIC'], (a) => {
+  const s = toText(scalar(a[0])).toUpperCase().trim()
+  const val: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 }
+  let total = 0; let prev = 0
+  for (let i = s.length - 1; i >= 0; i--) { const v = val[s[i]]; if (!v) return err('#VALOR!'); if (v < prev) total -= v; else { total += v; prev = v } }
+  return total
+})
+reg(['BASE'], (a) => { const n = n1(a); if (isError(n)) return n; const radix = n1(a, 1); if (isError(radix)) return radix; if (radix < 2 || radix > 36) return err('#NÚM!'); let s = Math.trunc(n).toString(Math.trunc(radix)).toUpperCase(); const places = a[2] !== undefined ? n1(a, 2) : 0; if (isError(places)) return places; if (s.length < places) s = '0'.repeat(places - s.length) + s; return s })
+reg(['DECIMAL', 'DECIMAL.CONV'], (a) => { const radix = n1(a, 1); if (isError(radix)) return radix; if (radix < 2 || radix > 36) return err('#NÚM!'); const v = parseInt(toText(scalar(a[0])), Math.trunc(radix)); return isNaN(v) ? err('#NÚM!') : v })
+reg(['FATODUPLO', 'FACTDOUBLE'], (a) => { const n = n1(a); if (isError(n)) return n; const k = Math.trunc(n); if (k < -1) return err('#NÚM!'); let f = 1; for (let i = k; i > 1; i -= 2) f *= i; return f })
+reg(['NÚMEROVALOR', 'NUMEROVALOR', 'NUMBERVALUE'], (a) => {
+  let s = toText(scalar(a[0]))
+  const dsep = a[1] !== undefined ? toText(scalar(a[1])) : ','
+  const gsep = a[2] !== undefined ? toText(scalar(a[2])) : '.'
+  s = s.split(gsep).join('').split(dsep).join('.')
+  const v = parseFloat(s)
+  return isNaN(v) ? err('#VALOR!') : v
+})
+
 /** Lista de nomes de funções (para autocompletar / ajuda). */
 export const FUNCTION_NAMES = (): string[] => Object.keys(FUNCTIONS).sort((a, b) => a.localeCompare(b, 'pt-BR'))
