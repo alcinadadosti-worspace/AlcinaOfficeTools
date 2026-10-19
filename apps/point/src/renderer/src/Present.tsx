@@ -30,9 +30,12 @@ export function Present({ deck, start, onClose }: { deck: Deck; start: number; o
   }, [last, onClose])
 
   const w = Math.min(size.w, (size.h * SLIDE_W) / SLIDE_H)
+  const trans = deck.slides[i].transition ?? 'none'
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: '#000', display: 'grid', placeItems: 'center', cursor: 'default' }} onClick={() => setI((x) => Math.min(last, x + 1))}>
-      <SlideView slide={deck.slides[i]} width={w} />
+      <div key={i} className={trans !== 'none' ? `ao-trans-${trans}` : undefined}>
+        <SlideView slide={deck.slides[i]} width={w} />
+      </div>
       <div style={{ position: 'fixed', bottom: 12, right: 16, color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>
         {i + 1} / {deck.slides.length} — setas para navegar · Esc para sair
       </div>

@@ -24,7 +24,7 @@ import {
 import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
-import { type ElementType, type SlideElement, type Deck, type ChartData, isShape, SLIDE_W, SLIDE_H } from '../../shared/deck'
+import { type ElementType, type SlideElement, type Deck, type ChartData, type Transition, isShape, SLIDE_W, SLIDE_H } from '../../shared/deck'
 import { newDeck, newSlide, newElement, mapSlide, mapElement, uid } from './model'
 import { SlideView } from './SlideView'
 import { SlideCanvas } from './SlideCanvas'
@@ -58,6 +58,7 @@ function shapeGlyph(type: ElementType): JSX.Element {
 }
 
 const CHART_TYPES: [ChartData['type'], string][] = [['column', 'Coluna'], ['bar', 'Barra'], ['line', 'Linha'], ['pie', 'Pizza']]
+const TRANSITIONS: [Transition, string][] = [['none', 'Nenhuma'], ['fade', 'Esmaecer'], ['slideLeft', 'Deslizar'], ['slideUp', 'Subir'], ['zoom', 'Zoom']]
 function chartToText(c: ChartData): string {
   return [c.categories.join(', '), ...c.series.map((s) => [s.name, ...s.data].join(', '))].join('\n')
 }
@@ -129,6 +130,8 @@ export function App(): ReactNode {
       })
     )
   const setBg = (color: string): void => setDeck((d) => mapSlide(d, idx, (s) => ({ ...s, background: color })))
+  const setNotes = (notes: string): void => setDeck((d) => mapSlide(d, idx, (s) => ({ ...s, notes })))
+  const setTransition = (t: Transition): void => setDeck((d) => mapSlide(d, idx, (s) => ({ ...s, transition: t })))
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -239,6 +242,7 @@ export function App(): ReactNode {
           label: 'Apresentação',
           items: [
             { key: 'play', label: 'Iniciar', icon: <Play24Regular />, onClick: () => setPresenting(true) },
+            { key: 'trans', label: 'Transição', icon: txt('⇄'), menu: <MenuList>{TRANSITIONS.map(([v, n]) => (<MenuItem key={v} onClick={() => setTransition(v)}>{n}</MenuItem>))}</MenuList> },
             { key: 'pptx', label: 'Exportar PPTX', icon: <ArrowDownload24Regular />, onClick: run(async () => { await exportPptx(deck, name) }) }
           ]
         }
@@ -257,7 +261,13 @@ export function App(): ReactNode {
             </div>
           ))}
         </div>
-        <SlideCanvas slide={slide} selId={selId} onSelect={setSelId} onChange={changeEl} onCommitText={(id, text) => changeEl(id, { text })} />
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <SlideCanvas slide={slide} selId={selId} onSelect={setSelId} onChange={changeEl} onCommitText={(id, text) => changeEl(id, { text })} />
+          <div style={{ flex: 'none', borderTop: '1px solid var(--ao-border)', background: 'var(--ao-bg)', display: 'flex', alignItems: 'stretch' }}>
+            <span style={{ flex: 'none', padding: '0 10px', fontSize: 11, color: 'var(--ao-text-3)', borderRight: '1px solid var(--ao-border)', display: 'flex', alignItems: 'center' }}>Anotações</span>
+            <textarea value={slide.notes ?? ''} onChange={(e) => setNotes(e.target.value)} placeholder="Anotações do apresentador…" style={{ flex: 1, height: 54, resize: 'none', border: 'none', outline: 'none', background: 'transparent', color: 'var(--ao-text)', fontSize: 13, fontFamily: 'inherit', padding: '6px 10px' }} />
+          </div>
+        </div>
       </div>
       {presenting && <Present deck={deck} start={idx} onClose={() => setPresenting(false)} />}
       <Dialog open={!!chartEdit} onOpenChange={(_, d) => !d.open && setChartEdit(null)}>

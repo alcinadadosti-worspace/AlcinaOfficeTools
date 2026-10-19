@@ -33,10 +33,16 @@ export interface SlideElement {
   chart?: ChartData
 }
 
+export type Transition = 'none' | 'fade' | 'slideLeft' | 'slideUp' | 'zoom'
+
 export interface Slide {
   id: string
   background: string
   elements: SlideElement[]
+  /** Anotações do apresentador. */
+  notes?: string
+  /** Transição de entrada na apresentação. */
+  transition?: Transition
 }
 
 export interface Deck {

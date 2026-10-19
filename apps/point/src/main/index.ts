@@ -126,6 +126,7 @@ app.whenReady().then(() => {
           slide.addShape(st, { ...pos, fill: { color: hex(el.fill ?? '#0F7A34') }, ...(el.stroke ? { line: { color: hex(el.stroke), width: el.strokeWidth ?? 1 } } : {}) })
         }
       }
+      if (s.notes) slide.addNotes(s.notes)
     }
     const buf = (await pres.write({ outputType: 'nodebuffer' })) as Buffer
     await fs.writeFile(path, buf)
