@@ -1,6 +1,12 @@
 // Modelo de apresentação (compartilhado renderer ↔ processo principal para .pptx).
 
-export type ElementType = 'text' | 'rect' | 'rounded' | 'ellipse' | 'triangle' | 'line' | 'arrow' | 'image'
+export type ElementType = 'text' | 'rect' | 'rounded' | 'ellipse' | 'triangle' | 'line' | 'arrow' | 'image' | 'chart'
+
+export interface ChartData {
+  type: 'column' | 'bar' | 'line' | 'pie'
+  categories: string[]
+  series: { name: string; data: number[] }[]
+}
 
 export interface SlideElement {
   id: string
@@ -23,6 +29,8 @@ export interface SlideElement {
   strokeWidth?: number
   /** Imagem em data URL. */
   image?: string
+  /** Dados do gráfico (type === 'chart'). */
+  chart?: ChartData
 }
 
 export interface Slide {

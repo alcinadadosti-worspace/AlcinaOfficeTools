@@ -112,6 +112,12 @@ app.whenReady().then(() => {
           slide.addText(el.text ?? '', { ...pos, fontSize: el.fontSize ?? 18, bold: el.bold, italic: el.italic, fontFace: el.fontFamily, color: hex(el.color ?? '#222222'), align: el.align ?? 'left', valign: 'top' })
         } else if (el.type === 'image' && el.image) {
           slide.addImage({ data: el.image, ...pos })
+        } else if (el.type === 'chart' && el.chart) {
+          const labels = el.chart.categories
+          const data = el.chart.series.map((s) => ({ name: s.name, labels, values: s.data }))
+          const t = el.chart.type
+          const ctype = t === 'line' ? pres.ChartType.line : t === 'pie' ? pres.ChartType.pie : pres.ChartType.bar
+          slide.addChart(ctype, data, { ...pos, barDir: t === 'bar' ? 'bar' : 'col', showLegend: el.chart.series.length > 1 })
         } else if (el.type === 'line' || el.type === 'arrow') {
           const st = el.type === 'arrow' ? pres.ShapeType.rightArrow : pres.ShapeType.line
           slide.addShape(st, { ...pos, line: { color: hex(el.stroke ?? el.fill ?? '#0F7A34'), width: el.strokeWidth ?? 3 } })

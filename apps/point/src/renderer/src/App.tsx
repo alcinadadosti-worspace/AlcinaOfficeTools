@@ -1,6 +1,6 @@
 // AlcinaPoint: apresentações com formas, formatação, organização e exportação .pptx.
 import { useEffect, useState, type ReactNode, type JSX } from 'react'
-import { MenuList, MenuItem } from '@fluentui/react-components'
+import { MenuList, MenuItem, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Button, Field, Textarea } from '@fluentui/react-components'
 import {
   SlideAdd24Regular,
   Copy24Regular,
@@ -24,7 +24,7 @@ import {
 import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
-import { type ElementType, type SlideElement, type Deck, isShape, SLIDE_W, SLIDE_H } from '../../shared/deck'
+import { type ElementType, type SlideElement, type Deck, type ChartData, isShape, SLIDE_W, SLIDE_H } from '../../shared/deck'
 import { newDeck, newSlide, newElement, mapSlide, mapElement, uid } from './model'
 import { SlideView } from './SlideView'
 import { SlideCanvas } from './SlideCanvas'
@@ -57,6 +57,20 @@ function shapeGlyph(type: ElementType): JSX.Element {
   )
 }
 
+const CHART_TYPES: [ChartData['type'], string][] = [['column', 'Coluna'], ['bar', 'Barra'], ['line', 'Linha'], ['pie', 'Pizza']]
+function chartToText(c: ChartData): string {
+  return [c.categories.join(', '), ...c.series.map((s) => [s.name, ...s.data].join(', '))].join('\n')
+}
+function textToChart(text: string, type: ChartData['type']): ChartData {
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
+  const categories = (lines[0] ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+  const series = lines.slice(1).map((line) => {
+    const p = line.split(',').map((s) => s.trim())
+    return { name: p[0] || 'Série', data: p.slice(1).map((x) => { const n = Number(x); return isFinite(n) ? n : 0 }) }
+  })
+  return { type, categories, series: series.length ? series : [{ name: 'Série 1', data: [] }] }
+}
+
 export function App(): ReactNode {
   const [deck, setDeck] = useState<Deck>(() => newDeck())
   const [current, setCurrent] = useState(0)
@@ -65,6 +79,7 @@ export function App(): ReactNode {
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [version, setVersion] = useState('')
   const [path, setPath] = useState<string | null>(null)
+  const [chartEdit, setChartEdit] = useState<{ id: string; text: string; type: ChartData['type'] } | null>(null)
 
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
@@ -77,6 +92,7 @@ export function App(): ReactNode {
   const selEl = slide.elements.find((e) => e.id === selId) ?? null
   const selText = selEl && selEl.type === 'text' ? selEl : null
   const selShape = selEl && isShape(selEl.type) ? selEl : null
+  const selChartEl = selEl && selEl.type === 'chart' && selEl.chart ? selEl : null
   const name = baseName(path)
 
   const changeEl = (id: string, patch: Partial<SlideElement>): void => setDeck((d) => mapSlide(d, idx, (s) => mapElement(s, id, (e) => ({ ...e, ...patch }))))
@@ -175,7 +191,10 @@ export function App(): ReactNode {
           items: [
             { key: 'text', label: 'Texto', icon: <TextT24Regular />, onClick: () => add('text') },
             { key: 'img', label: 'Imagem', icon: <Image24Regular />, onClick: run(async () => { const url = await pickImage(); if (url) add('image', url) }) },
-            { key: 'shapes', label: 'Formas', icon: <Shapes24Regular />, menu: <MenuList>{SHAPES.map(([t, n]) => (<MenuItem key={t} icon={shapeGlyph(t)} onClick={() => add(t)}>{n}</MenuItem>))}</MenuList> }
+            { key: 'shapes', label: 'Formas', icon: <Shapes24Regular />, menu: <MenuList>{SHAPES.map(([t, n]) => (<MenuItem key={t} icon={shapeGlyph(t)} onClick={() => add(t)}>{n}</MenuItem>))}</MenuList> },
+            { key: 'chart', label: 'Gráfico', icon: txt('▊'), onClick: () => add('chart') },
+            { key: 'ctype', label: 'Tipo', icon: txt('◴'), disabled: !selChartEl, menu: <MenuList>{CHART_TYPES.map(([v, n]) => (<MenuItem key={v} onClick={() => selChartEl && changeEl(selChartEl.id, { chart: { ...selChartEl.chart!, type: v } })}>{n}</MenuItem>))}</MenuList> },
+            { key: 'cdata', label: 'Editar dados', icon: txt('⋯'), disabled: !selChartEl, onClick: () => selChartEl && setChartEdit({ id: selChartEl.id, text: chartToText(selChartEl.chart!), type: selChartEl.chart!.type }) }
           ]
         },
         {
@@ -241,6 +260,22 @@ export function App(): ReactNode {
         <SlideCanvas slide={slide} selId={selId} onSelect={setSelId} onChange={changeEl} onCommitText={(id, text) => changeEl(id, { text })} />
       </div>
       {presenting && <Present deck={deck} start={idx} onClose={() => setPresenting(false)} />}
+      <Dialog open={!!chartEdit} onOpenChange={(_, d) => !d.open && setChartEdit(null)}>
+        <DialogSurface style={{ maxWidth: 520 }}>
+          <DialogBody>
+            <DialogTitle>Dados do gráfico</DialogTitle>
+            <DialogContent>
+              <Field label="1ª linha = categorias; demais linhas = Nome,valor,valor… (vírgula separa; ponto é decimal)">
+                <Textarea value={chartEdit?.text ?? ''} onChange={(_, d) => setChartEdit((c) => (c ? { ...c, text: d.value } : c))} textarea={{ rows: 8, style: { fontFamily: 'Consolas, monospace' } }} />
+              </Field>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setChartEdit(null)}>Cancelar</Button>
+              <Button appearance="primary" onClick={() => { if (chartEdit) changeEl(chartEdit.id, { chart: textToChart(chartEdit.text, chartEdit.type) }); setChartEdit(null) }}>Aplicar</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </AppShell>
   )
 }

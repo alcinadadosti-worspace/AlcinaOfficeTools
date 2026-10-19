@@ -34,6 +34,7 @@ export function newElement(type: ElementType, image?: string): SlideElement {
   if (type === 'image') return { ...base, type, w: 320, h: 200, image }
   if (type === 'line') return { ...base, type, h: 8, stroke: '#0f7a34', strokeWidth: 3 }
   if (type === 'arrow') return { ...base, type, h: 40, stroke: '#0f7a34', strokeWidth: 3 }
+  if (type === 'chart') return { ...base, type, w: 460, h: 300, chart: { type: 'column', categories: ['Jan', 'Fev', 'Mar'], series: [{ name: 'Série 1', data: [120, 200, 150] }] } }
   return { ...base, type, fill: type === 'ellipse' || type === 'triangle' ? '#c79a2a' : '#0f7a34' }
 }
 

@@ -2,6 +2,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { type Slide, type SlideElement, SLIDE_W, SLIDE_H, isShape } from '../../shared/deck'
 import { ShapeSvg } from './shapes'
+import { ChartView } from './ChartView'
 
 export function boxStyle(el: SlideElement): CSSProperties {
   const s: CSSProperties = { position: 'absolute', left: el.x, top: el.y, width: el.w, height: el.h, boxSizing: 'border-box' }
@@ -29,6 +30,7 @@ export function boxStyle(el: SlideElement): CSSProperties {
 
 export function elementInner(el: SlideElement): ReactNode {
   if (el.type === 'text') return el.text
+  if (el.type === 'chart' && el.chart) return <ChartView data={el.chart} />
   if (isShape(el.type)) return <ShapeSvg el={el} />
   return null
 }

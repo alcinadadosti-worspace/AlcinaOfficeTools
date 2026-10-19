@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { type Slide, type SlideElement, SLIDE_W, SLIDE_H, isShape } from '../../shared/deck'
 import { boxStyle } from './SlideView'
 import { ShapeSvg } from './shapes'
+import { ChartView } from './ChartView'
 
 interface DragState {
   id: string
@@ -104,6 +105,8 @@ export function SlideCanvas({
                   />
                 ) : el.type === 'text' ? (
                   el.text
+                ) : el.type === 'chart' && el.chart ? (
+                  <ChartView data={el.chart} />
                 ) : isShape(el.type) ? (
                   <ShapeSvg el={el} />
                 ) : null}
