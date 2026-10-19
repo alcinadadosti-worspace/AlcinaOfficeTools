@@ -66,6 +66,7 @@ export function App(): ReactNode {
   const [notice, setNotice] = useState<string | null>(null)
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [version, setVersion] = useState('')
+  const [layout, setLayout] = useState<{ margin: 'normal' | 'narrow' | 'wide'; orient: 'portrait' | 'landscape'; columns: 1 | 2 | 3 }>({ margin: 'normal', orient: 'portrait', columns: 1 })
 
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
@@ -224,6 +225,20 @@ export function App(): ReactNode {
       ]
     },
     {
+      key: 'layout',
+      label: 'Layout',
+      groups: [
+        {
+          label: 'Configurar página',
+          items: [
+            { key: 'margins', label: 'Margens', icon: txt('▭'), menu: <MenuList><MenuItem onClick={() => setLayout((l) => ({ ...l, margin: 'normal' }))}>Normais</MenuItem><MenuItem onClick={() => setLayout((l) => ({ ...l, margin: 'narrow' }))}>Estreitas</MenuItem><MenuItem onClick={() => setLayout((l) => ({ ...l, margin: 'wide' }))}>Largas</MenuItem></MenuList> },
+            { key: 'orient', label: 'Orientação', icon: txt('⟳'), menu: <MenuList><MenuItem onClick={() => setLayout((l) => ({ ...l, orient: 'portrait' }))}>Retrato</MenuItem><MenuItem onClick={() => setLayout((l) => ({ ...l, orient: 'landscape' }))}>Paisagem</MenuItem></MenuList> },
+            { key: 'cols', label: 'Colunas', icon: txt('▥'), menu: <MenuList><MenuItem onClick={() => setLayout((l) => ({ ...l, columns: 1 }))}>Uma</MenuItem><MenuItem onClick={() => setLayout((l) => ({ ...l, columns: 2 }))}>Duas</MenuItem><MenuItem onClick={() => setLayout((l) => ({ ...l, columns: 3 }))}>Três</MenuItem></MenuList> }
+          ]
+        }
+      ]
+    },
+    {
       key: 'file',
       label: 'Arquivo',
       groups: [
@@ -257,7 +272,7 @@ export function App(): ReactNode {
       )}
       <input ref={imgInput} type="file" accept="image/*" hidden onChange={onPickImage} />
       <div className="ao-doc-scroll">
-        <div className="ao-doc-page">
+        <div className="ao-doc-page" data-cols={String(layout.columns)} style={{ width: layout.orient === 'landscape' ? 1056 : 816, padding: layout.margin === 'narrow' ? 48 : layout.margin === 'wide' ? 140 : 96 }}>
           <Editor apiRef={apiRef} onState={setSnap} />
         </div>
       </div>
