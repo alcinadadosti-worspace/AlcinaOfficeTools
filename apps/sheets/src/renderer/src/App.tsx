@@ -35,6 +35,7 @@ import type { UpdateStatus } from '@alcina/updater'
 import { colToLetter } from '@alcina/sheets-engine'
 import { newSheet, cellKey, type SheetDoc, type CellStyle, type NumFmt, type ChartObj, type ChartType, type CondRule } from './model'
 import { remap, sortBlock, findReplaceAll, fillPlan, fillSeries } from './ops'
+import { buildPivot, AGG_LABEL, type Agg, type PivotCfg } from './pivot'
 import { Grid, type Sel } from './Grid'
 import { ChartLayer } from './ChartLayer'
 import { saveWorkbook, openWorkbook, importCsv, exportCsv, importXlsx, exportXlsx } from './io'
@@ -76,6 +77,7 @@ export function App(): ReactNode {
   const [filter, setFilter] = useState<{ r1: number; r2: number; cols: Record<number, string[]> } | null>(null)
   const [filterDlg, setFilterDlg] = useState<{ col: number; values: string[]; checked: Record<string, boolean> } | null>(null)
   const [valDlg, setValDlg] = useState<{ open: boolean; list: string }>({ open: false, list: '' })
+  const [pivot, setPivot] = useState<{ open: boolean; headers: { idx: number; name: string }[]; rowField: number; colField: number; valField: number; agg: Agg } | null>(null)
 
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
@@ -225,6 +227,50 @@ export function App(): ReactNode {
     setSelState({ ar: r1, ac: c1, fr: nr2, fc: nc2 })
     bump()
   }
+  // Tabela dinâmica: usa a seleção como intervalo de dados (1ª linha = cabeçalho).
+  const openPivot = (): void => {
+    if (c2 <= c1 || r2 <= r1) { setNotice('Selecione um intervalo com cabeçalho e ao menos duas colunas e duas linhas.'); return }
+    const headers: { idx: number; name: string }[] = []
+    for (let c = c1; c <= c2; c++) {
+      const h = engine.getValue(r1, c)
+      headers.push({ idx: c, name: h === null || h === '' || typeof h === 'object' ? colToLetter(c) : String(h) })
+    }
+    const valDefault = headers.length > 1 ? headers[headers.length - 1].idx : headers[0].idx
+    setPivot({ open: true, headers, rowField: headers[0].idx, colField: -1, valField: valDefault, agg: 'sum' })
+  }
+  const applyPivot = (): void => {
+    if (!pivot) return
+    const cfg: PivotCfg = { rowField: pivot.rowField, colField: pivot.colField < 0 ? null : pivot.colField, valField: pivot.valField, agg: pivot.agg }
+    const names = pivot.headers.reduce<string[]>((acc, h) => { acc[h.idx] = h.name; return acc }, [])
+    const { grid, colKeys, rowKeys } = buildPivot(engine, r1, r2, names, cfg)
+    const doc = newSheet(`Dinâmica${sheets.length + 1}`)
+    const styles: Record<string, CellStyle> = {}
+    const lastRow = grid.length - 1
+    const lastCol = (grid[0]?.length ?? 1) - 1
+    grid.forEach((row, r) => {
+      row.forEach((txt, c) => {
+        if (txt !== '') doc.engine.setCell(r, c, txt)
+        const header = r === 0
+        const totalRow = r === lastRow
+        const totalCol = cfg.colField !== null && c === lastCol
+        const firstCol = c === 0
+        const s: CellStyle = {}
+        if (header) { s.bold = true; s.fill = '#0f7a34'; s.color = '#ffffff'; s.align = c === 0 ? 'left' : 'center' }
+        else if (totalRow) { s.bold = true; s.fill = '#eef7f0'; s.bt = true }
+        else if (firstCol) s.bold = true
+        if (totalCol && !header) { s.bold = true; s.bl = true }
+        if (!header && c > 0) s.align = 'right'
+        if (Object.keys(s).length) styles[cellKey(r, c)] = s
+      })
+    })
+    doc.styles = styles
+    setSheets((arr) => [...arr, doc])
+    setActive(sheets.length)
+    setSelState({ ar: 0, ac: 0, fr: 0, fc: 0 })
+    setPivot(null)
+    setNotice(`Tabela dinâmica criada em "${doc.name}" (${rowKeys.length} linha(s)${cfg.colField !== null ? ` × ${colKeys.length} coluna(s)` : ''}).`)
+  }
+
   const selStats = ((): { count: number; sum: number; nonEmpty: number } => {
     let count = 0
     let sum = 0
@@ -530,6 +576,10 @@ export function App(): ReactNode {
       label: 'Inserir',
       groups: [
         {
+          label: 'Tabelas',
+          items: [{ key: 'pivot', label: 'Tabela dinâmica', icon: <DocumentTable24Regular />, onClick: openPivot }]
+        },
+        {
           label: 'Gráficos',
           items: [
             { key: 'ccol', label: 'Coluna', icon: txtIcon('▊'), disabled: editing !== null, onClick: () => insertChart('column') },
@@ -746,6 +796,46 @@ export function App(): ReactNode {
             <DialogActions>
               <Button onClick={() => setValDlg((v) => ({ ...v, open: false }))}>Cancelar</Button>
               <Button appearance="primary" onClick={applyValidation}>Aplicar</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      <Dialog open={!!pivot?.open} onOpenChange={(_, d) => !d.open && setPivot(null)}>
+        <DialogSurface style={{ maxWidth: 460 }}>
+          <DialogBody>
+            <DialogTitle>Tabela dinâmica</DialogTitle>
+            <DialogContent>
+              {pivot && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 12, color: 'var(--ao-text-3)' }}>Resume o intervalo selecionado em uma nova planilha. A primeira linha é usada como cabeçalho.</div>
+                  <Field label="Linhas (agrupar por)">
+                    <select value={pivot.rowField} onChange={(e) => setPivot((p) => (p ? { ...p, rowField: Number(e.target.value) } : p))} style={{ padding: '5px 6px', border: '1px solid var(--ao-border)', borderRadius: 4 }}>
+                      {pivot.headers.map((h) => (<option key={h.idx} value={h.idx}>{h.name}</option>))}
+                    </select>
+                  </Field>
+                  <Field label="Colunas (opcional)">
+                    <select value={pivot.colField} onChange={(e) => setPivot((p) => (p ? { ...p, colField: Number(e.target.value) } : p))} style={{ padding: '5px 6px', border: '1px solid var(--ao-border)', borderRadius: 4 }}>
+                      <option value={-1}>(nenhuma)</option>
+                      {pivot.headers.map((h) => (<option key={h.idx} value={h.idx}>{h.name}</option>))}
+                    </select>
+                  </Field>
+                  <Field label="Valores">
+                    <select value={pivot.valField} onChange={(e) => setPivot((p) => (p ? { ...p, valField: Number(e.target.value) } : p))} style={{ padding: '5px 6px', border: '1px solid var(--ao-border)', borderRadius: 4 }}>
+                      {pivot.headers.map((h) => (<option key={h.idx} value={h.idx}>{h.name}</option>))}
+                    </select>
+                  </Field>
+                  <Field label="Resumir por">
+                    <select value={pivot.agg} onChange={(e) => setPivot((p) => (p ? { ...p, agg: e.target.value as Agg } : p))} style={{ padding: '5px 6px', border: '1px solid var(--ao-border)', borderRadius: 4 }}>
+                      {(Object.keys(AGG_LABEL) as Agg[]).map((a) => (<option key={a} value={a}>{AGG_LABEL[a]}</option>))}
+                    </select>
+                  </Field>
+                </div>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setPivot(null)}>Cancelar</Button>
+              <Button appearance="primary" onClick={applyPivot}>Criar</Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>
