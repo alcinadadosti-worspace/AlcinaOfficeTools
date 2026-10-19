@@ -13,6 +13,9 @@ export interface Snapshot {
   strong: boolean
   em: boolean
   underline: boolean
+  strike: boolean
+  sub: boolean
+  sup: boolean
   heading: number
   align: string | null
   canUndo: boolean
@@ -26,6 +29,7 @@ export interface EditorApi {
   setHTML(html: string): void
   getBlocks(): DocBlock[]
   getPrintHtml(): string
+  replaceAll(find: string, replace: string, matchCase: boolean): number
   focus(): void
 }
 
@@ -45,6 +49,9 @@ function snapshotOf(state: EditorState): Snapshot {
     strong: markActive(state, schema.marks.strong),
     em: markActive(state, schema.marks.em),
     underline: markActive(state, schema.marks.underline),
+    strike: markActive(state, schema.marks.strike),
+    sub: markActive(state, schema.marks.sub),
+    sup: markActive(state, schema.marks.sup),
     heading: parent.type.name === 'heading' ? (parent.attrs.level as number) : 0,
     align: (parent.attrs.align as string | null) ?? null,
     canUndo: undoDepth(state) > 0,
@@ -81,6 +88,27 @@ export function Editor({ apiRef, onState }: { apiRef: MutableRefObject<EditorApi
         load(PMDOMParser.fromSchema(schema).parse(dom.body))
       },
       getBlocks: () => docToBlocks(view.state.doc),
+      replaceAll: (find, replaceWith, matchCase) => {
+        if (!find) return 0
+        const matches: { from: number; to: number }[] = []
+        view.state.doc.descendants((node, pos) => {
+          if (node.isText && node.text) {
+            const hay = matchCase ? node.text : node.text.toLowerCase()
+            const needle = matchCase ? find : find.toLowerCase()
+            let i = 0
+            while ((i = hay.indexOf(needle, i)) >= 0) {
+              matches.push({ from: pos + i, to: pos + i + find.length })
+              i += find.length || 1
+            }
+          }
+        })
+        if (!matches.length) return 0
+        const tr = view.state.tr
+        for (let m = matches.length - 1; m >= 0; m--) tr.insertText(replaceWith, matches[m].from, matches[m].to)
+        view.dispatch(tr)
+        onState(snapshotOf(view.state))
+        return matches.length
+      },
       getPrintHtml: () => {
         const frag = serializer.serializeFragment(view.state.doc.content)
         const div = document.createElement('div')

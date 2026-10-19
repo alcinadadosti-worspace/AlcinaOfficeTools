@@ -4,6 +4,7 @@ import { baseKeymap, toggleMark, setBlockType, wrapIn, chainCommands, exitCode }
 import { undo, redo } from 'prosemirror-history'
 import { splitListItem, liftListItem, sinkListItem, wrapInList } from 'prosemirror-schema-list'
 import type { Command, Plugin } from 'prosemirror-state'
+import type { MarkType } from 'prosemirror-model'
 import { schema } from './schema'
 
 const li = schema.nodes.list_item
@@ -13,15 +14,34 @@ const insertHr: Command = (state, dispatch) => {
   return true
 }
 
-export function setAlign(align: string): Command {
+/** Define (ou remove) uma marca com atributos sobre a seleção. */
+function applyMark(type: MarkType, attrs: Record<string, unknown> | null): Command {
+  return (state, dispatch) => {
+    const { from, to, empty } = state.selection
+    if (empty) {
+      if (dispatch) dispatch(attrs ? state.tr.addStoredMark(type.create(attrs)) : state.tr.removeStoredMark(type))
+      return true
+    }
+    if (dispatch) {
+      const tr = state.tr.removeMark(from, to, type)
+      if (attrs) tr.addMark(from, to, type.create(attrs))
+      dispatch(tr)
+    }
+    return true
+  }
+}
+
+function nodeAttr(attr: 'align' | 'indent' | 'lineHeight', value: unknown, relative = false): Command {
   return (state, dispatch) => {
     const { from, to } = state.selection
     let tr = state.tr
     let applied = false
     state.doc.nodesBetween(from, to, (node, pos) => {
       const attrs = node.type.spec.attrs
-      if (attrs && 'align' in attrs) {
-        tr = tr.setNodeMarkup(pos, undefined, { ...node.attrs, align })
+      if (attrs && attr in attrs) {
+        const cur = node.attrs[attr]
+        const next = relative ? Math.max(0, (typeof cur === 'number' ? cur : 0) + (value as number)) : value
+        tr = tr.setNodeMarkup(pos, undefined, { ...node.attrs, [attr]: next })
         applied = true
       }
     })
@@ -30,10 +50,42 @@ export function setAlign(align: string): Command {
   }
 }
 
+export const setAlign = (align: string): Command => nodeAttr('align', align)
+export const setIndent = (delta: number): Command => nodeAttr('indent', delta, true)
+export const setLineHeight = (v: string | null): Command => nodeAttr('lineHeight', v)
+export const setColor = (c: string): Command => applyMark(schema.marks.color, c ? { color: c } : null)
+export const setHighlight = (c: string): Command => applyMark(schema.marks.highlight, c ? { color: c } : null)
+export const setFontSize = (px: number): Command => applyMark(schema.marks.fontSize, { size: `${px}px` })
+export const setFontFamily = (f: string): Command => applyMark(schema.marks.fontFamily, f ? { family: f } : null)
+
+export const clearFormat: Command = (state, dispatch) => {
+  const { from, to } = state.selection
+  if (dispatch) {
+    let tr = state.tr
+    for (const name in schema.marks) tr = tr.removeMark(from, to, schema.marks[name])
+    dispatch(tr)
+  }
+  return true
+}
+
+export function changeCase(mode: 'upper' | 'lower' | 'title'): Command {
+  return (state, dispatch) => {
+    const { from, to, empty } = state.selection
+    if (empty) return false
+    const text = state.doc.textBetween(from, to, ' ')
+    const nt = mode === 'upper' ? text.toUpperCase() : mode === 'lower' ? text.toLowerCase() : text.replace(/\b\w/g, (ch) => ch.toUpperCase())
+    if (dispatch) dispatch(state.tr.insertText(nt, from, to))
+    return true
+  }
+}
+
 export const cmd = {
   bold: toggleMark(schema.marks.strong),
   italic: toggleMark(schema.marks.em),
   underline: toggleMark(schema.marks.underline),
+  strike: toggleMark(schema.marks.strike),
+  sub: toggleMark(schema.marks.sub),
+  sup: toggleMark(schema.marks.sup),
   paragraph: setBlockType(schema.nodes.paragraph),
   h1: setBlockType(schema.nodes.heading, { level: 1 }),
   h2: setBlockType(schema.nodes.heading, { level: 2 }),
@@ -44,6 +96,9 @@ export const cmd = {
   hr: insertHr,
   undo,
   redo,
+  clearFormat,
+  indentMore: setIndent(1),
+  indentLess: setIndent(-1),
   alignLeft: setAlign('left'),
   alignCenter: setAlign('center'),
   alignRight: setAlign('right'),

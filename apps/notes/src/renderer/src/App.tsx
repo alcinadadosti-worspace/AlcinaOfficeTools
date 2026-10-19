@@ -21,7 +21,7 @@ import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
 import { newNote, saveNotebook, openNotebook, baseName, emptyDoc, type Note } from './io'
 
-const EMPTY: Snapshot = { strong: false, em: false, underline: false, heading: 0, align: null, canUndo: false, canRedo: false }
+const EMPTY: Snapshot = { strong: false, em: false, underline: false, strike: false, sub: false, sup: false, heading: 0, align: null, canUndo: false, canRedo: false }
 
 export function App(): ReactNode {
   const apiRef = useRef<EditorApi | null>(null)
