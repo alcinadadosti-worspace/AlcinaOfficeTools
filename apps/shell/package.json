@@ -31,5 +31,6 @@
     "react-dom": "19.3.1",
     "typescript": "7.0.2",
     "vite": "8.3.4"
-  }
+  },
+  "homepage": "https://github.com/alcinadadosti-worspace/AlcinaOfficeTools"
 }
