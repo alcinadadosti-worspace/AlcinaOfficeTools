@@ -33,9 +33,10 @@ import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
 import { colToLetter } from '@alcina/sheets-engine'
-import { newSheet, cellKey, type SheetDoc, type CellStyle, type NumFmt } from './model'
+import { newSheet, cellKey, type SheetDoc, type CellStyle, type NumFmt, type ChartObj, type ChartType } from './model'
 import { remap, sortBlock, findReplaceAll } from './ops'
 import { Grid, type Sel } from './Grid'
+import { ChartLayer } from './ChartLayer'
 import { saveWorkbook, openWorkbook, importCsv, exportCsv, importXlsx, exportXlsx } from './io'
 
 const ROWS = 200
@@ -70,6 +71,7 @@ export function App(): ReactNode {
   const [version, setVersion] = useState('')
   const [rev, bump] = useReducer((n: number) => n + 1, 0)
   const [freeze, setFreeze] = useState<{ r: number; c: number }>({ r: 0, c: 0 })
+  const [selChart, setSelChart] = useState<string | null>(null)
 
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
@@ -102,6 +104,18 @@ export function App(): ReactNode {
   }
   const unmergeCells = (): void => {
     setSheets((arr) => arr.map((sh, i) => (i === idx ? { ...sh, merges: (sh.merges ?? []).filter((m) => !(m.r >= r1 && m.r <= r2 && m.c <= c2 && m.c + m.cs - 1 >= c1)) } : sh)))
+  }
+  const charts = sheet.charts ?? []
+  const insertChart = (type: ChartType): void => {
+    const id = `chart_${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`
+    const ch: ChartObj = { id, type, r1, c1, r2, c2, x: 60, y: 40, w: 440, h: 300 }
+    setSheets((arr) => arr.map((sh, i) => (i === idx ? { ...sh, charts: [...(sh.charts ?? []), ch] } : sh)))
+    setSelChart(id)
+  }
+  const updateChart = (id: string, patch: Partial<ChartObj>): void => setSheets((arr) => arr.map((sh, i) => (i === idx ? { ...sh, charts: (sh.charts ?? []).map((c) => (c.id === id ? { ...c, ...patch } : c)) } : sh)))
+  const deleteChart = (id: string): void => {
+    setSheets((arr) => arr.map((sh, i) => (i === idx ? { ...sh, charts: (sh.charts ?? []).filter((c) => c.id !== id) } : sh)))
+    setSelChart(null)
   }
 
   const setSel = (s: Sel): void => {
@@ -378,6 +392,21 @@ export function App(): ReactNode {
       ]
     },
     {
+      key: 'insert',
+      label: 'Inserir',
+      groups: [
+        {
+          label: 'Gráficos',
+          items: [
+            { key: 'ccol', label: 'Coluna', icon: txtIcon('▊'), disabled: editing !== null, onClick: () => insertChart('column') },
+            { key: 'cbar', label: 'Barra', icon: txtIcon('▆'), disabled: editing !== null, onClick: () => insertChart('bar') },
+            { key: 'cline', label: 'Linha', icon: txtIcon('/'), disabled: editing !== null, onClick: () => insertChart('line') },
+            { key: 'cpie', label: 'Pizza', icon: txtIcon('◔'), disabled: editing !== null, onClick: () => insertChart('pie') }
+          ]
+        }
+      ]
+    },
+    {
       key: 'formulas',
       label: 'Fórmulas',
       groups: [
@@ -444,8 +473,9 @@ export function App(): ReactNode {
           />
         </div>
 
-        <div style={{ flex: 1, minHeight: 0 }}>
+        <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
           <Grid engine={engine} styles={styles} merges={merges} rows={ROWS} cols={COLS} rev={rev} freezeR={freeze.r} freezeC={freeze.c} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
+          <ChartLayer charts={charts} engine={engine} rev={rev} selId={selChart} onSelect={setSelChart} onChange={updateChart} onDelete={deleteChart} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'stretch', height: 30, borderTop: '1px solid var(--ao-border)', background: 'var(--ao-surface)', flex: 'none' }}>

@@ -30,11 +30,29 @@ export interface Merge {
   cs: number
 }
 
+export type ChartType = 'column' | 'bar' | 'line' | 'pie'
+
+/** Gráfico flutuante sobre a grade, alimentado por um intervalo de células. */
+export interface ChartObj {
+  id: string
+  type: ChartType
+  r1: number
+  c1: number
+  r2: number
+  c2: number
+  x: number
+  y: number
+  w: number
+  h: number
+  title?: string
+}
+
 export interface SheetDoc {
   name: string
   engine: SheetEngine
   styles: Record<string, CellStyle>
   merges: Merge[]
+  charts: ChartObj[]
 }
 
 export interface SavedSheet {
@@ -42,6 +60,7 @@ export interface SavedSheet {
   cells: CellEntry[]
   styles?: Record<string, CellStyle>
   merges?: Merge[]
+  charts?: ChartObj[]
 }
 
 export interface SavedWorkbook {
@@ -55,11 +74,11 @@ export function cellKey(row: number, col: number): string {
 }
 
 export function newSheet(name: string): SheetDoc {
-  return { name, engine: new SheetEngine(), styles: {}, merges: [] }
+  return { name, engine: new SheetEngine(), styles: {}, merges: [], charts: [] }
 }
 
 export function serialize(sheets: SheetDoc[]): SavedWorkbook {
-  return { version: 1, app: 'alcina-sheets', sheets: sheets.map((s) => ({ name: s.name, cells: s.engine.entries(), styles: s.styles, merges: s.merges })) }
+  return { version: 1, app: 'alcina-sheets', sheets: sheets.map((s) => ({ name: s.name, cells: s.engine.entries(), styles: s.styles, merges: s.merges, charts: s.charts })) }
 }
 
 export function deserialize(data: SavedWorkbook): SheetDoc[] {
@@ -67,7 +86,7 @@ export function deserialize(data: SavedWorkbook): SheetDoc[] {
   const out = (data.sheets ?? []).map((s) => {
     const e = new SheetEngine()
     e.load(s.cells ?? [])
-    return { name: s.name, engine: e, styles: s.styles ?? {}, merges: s.merges ?? [] }
+    return { name: s.name, engine: e, styles: s.styles ?? {}, merges: s.merges ?? [], charts: s.charts ?? [] }
   })
   return out.length ? out : [newSheet('Planilha1')]
 }
