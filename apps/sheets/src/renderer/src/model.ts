@@ -30,6 +30,19 @@ export interface Merge {
   cs: number
 }
 
+/** Regra de formatação condicional aplicada a um intervalo. */
+export interface CondRule {
+  r1: number
+  c1: number
+  r2: number
+  c2: number
+  op: '>' | '<' | '>=' | '<=' | '=' | '<>' | 'between'
+  v1: number
+  v2?: number
+  fill: string
+  color?: string
+}
+
 export type ChartType = 'column' | 'bar' | 'line' | 'pie'
 
 /** Gráfico flutuante sobre a grade, alimentado por um intervalo de células. */
@@ -53,6 +66,7 @@ export interface SheetDoc {
   styles: Record<string, CellStyle>
   merges: Merge[]
   charts: ChartObj[]
+  condFormats: CondRule[]
 }
 
 export interface SavedSheet {
@@ -61,6 +75,7 @@ export interface SavedSheet {
   styles?: Record<string, CellStyle>
   merges?: Merge[]
   charts?: ChartObj[]
+  condFormats?: CondRule[]
 }
 
 export interface SavedWorkbook {
@@ -74,11 +89,11 @@ export function cellKey(row: number, col: number): string {
 }
 
 export function newSheet(name: string): SheetDoc {
-  return { name, engine: new SheetEngine(), styles: {}, merges: [], charts: [] }
+  return { name, engine: new SheetEngine(), styles: {}, merges: [], charts: [], condFormats: [] }
 }
 
 export function serialize(sheets: SheetDoc[]): SavedWorkbook {
-  return { version: 1, app: 'alcina-sheets', sheets: sheets.map((s) => ({ name: s.name, cells: s.engine.entries(), styles: s.styles, merges: s.merges, charts: s.charts })) }
+  return { version: 1, app: 'alcina-sheets', sheets: sheets.map((s) => ({ name: s.name, cells: s.engine.entries(), styles: s.styles, merges: s.merges, charts: s.charts, condFormats: s.condFormats })) }
 }
 
 export function deserialize(data: SavedWorkbook): SheetDoc[] {
@@ -86,7 +101,7 @@ export function deserialize(data: SavedWorkbook): SheetDoc[] {
   const out = (data.sheets ?? []).map((s) => {
     const e = new SheetEngine()
     e.load(s.cells ?? [])
-    return { name: s.name, engine: e, styles: s.styles ?? {}, merges: s.merges ?? [], charts: s.charts ?? [] }
+    return { name: s.name, engine: e, styles: s.styles ?? {}, merges: s.merges ?? [], charts: s.charts ?? [], condFormats: s.condFormats ?? [] }
   })
   return out.length ? out : [newSheet('Planilha1')]
 }

@@ -1,7 +1,7 @@
 // Grade de células: seleção de intervalo, edição, estilos e teclado.
 import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
 import { type SheetEngine, type CellValue, colToLetter } from '@alcina/sheets-engine'
-import { cellKey, type CellStyle, type Merge } from './model'
+import { cellKey, type CellStyle, type Merge, type CondRule } from './model'
 import { formatCell } from './format'
 
 const W = 94
@@ -24,6 +24,8 @@ export interface GridProps {
   freezeR?: number
   freezeC?: number
   merges?: Merge[]
+  condFormats?: CondRule[]
+  hiddenRows?: Set<number>
   sel: Sel
   editing: string | null
   setSel: (s: Sel) => void
@@ -40,6 +42,8 @@ export function Grid(props: GridProps): ReactNode {
   const { engine, styles, rows, cols, sel, editing } = props
   const freezeR = props.freezeR ?? 0
   const freezeC = props.freezeC ?? 0
+  const condFormats = props.condFormats ?? []
+  const hiddenRows = props.hiddenRows
   const selRef = useRef(sel)
   selRef.current = sel
   const dragging = useRef(false)
@@ -184,6 +188,7 @@ export function Grid(props: GridProps): ReactNode {
           {Array.from({ length: cols }, (_, c) => header(colToLetter(c), W, false, c >= c1 && c <= c2, c))}
         </div>
         {Array.from({ length: rows }, (_, r) => {
+          if (hiddenRows?.has(r)) return null
           const frozenRow = r < freezeR
           return (
           <div key={r} style={frozenRow ? { display: 'flex', position: 'sticky', top: H * (r + 1), zIndex: 3, background: 'var(--ao-surface)' } : { display: 'flex' }}>
@@ -197,6 +202,16 @@ export function Grid(props: GridProps): ReactNode {
               const spillInfo = spillMap.get(key)
               const isConflict = conflict.has(key)
               const dv: CellValue = isConflict ? '#DERRAM!' : spillInfo && !spillInfo.anchor ? spillInfo.value : v
+              let cfFill: string | undefined
+              let cfColor: string | undefined
+              if (typeof dv === 'number' && condFormats.length) {
+                for (const rule of condFormats) {
+                  if (r >= Math.min(rule.r1, rule.r2) && r <= Math.max(rule.r1, rule.r2) && c >= Math.min(rule.c1, rule.c2) && c <= Math.max(rule.c1, rule.c2) && matchCond(rule, dv)) {
+                    cfFill = rule.fill
+                    cfColor = rule.color
+                  }
+                }
+              }
               const numeric = typeof dv === 'number'
               const inRange = r >= r1 && r <= r2 && c >= c1 && c <= c2
               const active = r === sel.ar && c === sel.ac
@@ -216,8 +231,8 @@ export function Grid(props: GridProps): ReactNode {
                 fontWeight: st?.bold ? 700 : 400,
                 fontStyle: st?.italic ? 'italic' : 'normal',
                 textDecoration: st?.underline ? 'underline' : 'none',
-                color: st?.color || 'var(--ao-text)',
-                background: st?.fill || (inRange && !active ? 'var(--ao-green-soft)' : spillInfo && !isConflict ? 'rgba(16,124,65,0.06)' : '#fff'),
+                color: st?.color || cfColor || 'var(--ao-text)',
+                background: st?.fill || cfFill || (inRange && !active ? 'var(--ao-green-soft)' : spillInfo && !isConflict ? 'rgba(16,124,65,0.06)' : '#fff'),
                 borderRight: st?.br ? `1.5px solid ${bc}` : '1px solid var(--ao-border)',
                 borderBottom: st?.bb ? `1.5px solid ${bc}` : '1px solid var(--ao-border)',
                 borderTop: st?.bt ? `1.5px solid ${bc}` : undefined,
@@ -283,4 +298,24 @@ export function Grid(props: GridProps): ReactNode {
       </div>
     </div>
   )
+}
+
+function matchCond(rule: CondRule, n: number): boolean {
+  switch (rule.op) {
+    case '>':
+      return n > rule.v1
+    case '<':
+      return n < rule.v1
+    case '>=':
+      return n >= rule.v1
+    case '<=':
+      return n <= rule.v1
+    case '=':
+      return n === rule.v1
+    case '<>':
+      return n !== rule.v1
+    case 'between':
+      return n >= rule.v1 && n <= (rule.v2 ?? rule.v1)
+  }
+  return false
 }

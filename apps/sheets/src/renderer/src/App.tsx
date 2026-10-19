@@ -33,7 +33,7 @@ import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
 import { colToLetter } from '@alcina/sheets-engine'
-import { newSheet, cellKey, type SheetDoc, type CellStyle, type NumFmt, type ChartObj, type ChartType } from './model'
+import { newSheet, cellKey, type SheetDoc, type CellStyle, type NumFmt, type ChartObj, type ChartType, type CondRule } from './model'
 import { remap, sortBlock, findReplaceAll } from './ops'
 import { Grid, type Sel } from './Grid'
 import { ChartLayer } from './ChartLayer'
@@ -72,6 +72,9 @@ export function App(): ReactNode {
   const [rev, bump] = useReducer((n: number) => n + 1, 0)
   const [freeze, setFreeze] = useState<{ r: number; c: number }>({ r: 0, c: 0 })
   const [selChart, setSelChart] = useState<string | null>(null)
+  const [cf, setCf] = useState<{ open: boolean; op: CondRule['op']; v1: string; v2: string; fill: string }>({ open: false, op: '>', v1: '', v2: '', fill: '#fdf3d0' })
+  const [filter, setFilter] = useState<{ r1: number; r2: number; cols: Record<number, string[]> } | null>(null)
+  const [filterDlg, setFilterDlg] = useState<{ col: number; values: string[]; checked: Record<string, boolean> } | null>(null)
 
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
@@ -117,6 +120,55 @@ export function App(): ReactNode {
     setSheets((arr) => arr.map((sh, i) => (i === idx ? { ...sh, charts: (sh.charts ?? []).filter((c) => c.id !== id) } : sh)))
     setSelChart(null)
   }
+  const condFormats = sheet.condFormats ?? []
+  const openCf = (op: CondRule['op']): void => setCf({ open: true, op, v1: '', v2: '', fill: '#fdf3d0' })
+  const applyCf = (): void => {
+    const v1 = parseFloat(cf.v1.replace(',', '.'))
+    if (!isFinite(v1)) { setCf((c) => ({ ...c, open: false })); return }
+    const v2raw = parseFloat(cf.v2.replace(',', '.'))
+    const rule: CondRule = { r1, c1, r2, c2, op: cf.op, v1, v2: cf.op === 'between' && isFinite(v2raw) ? v2raw : undefined, fill: cf.fill }
+    setSheets((arr) => arr.map((sh, i) => (i === idx ? { ...sh, condFormats: [...(sh.condFormats ?? []), rule] } : sh)))
+    setCf((c) => ({ ...c, open: false }))
+  }
+  const clearCf = (): void => setSheets((arr) => arr.map((sh, i) => (i === idx ? { ...sh, condFormats: [] } : sh)))
+
+  const cellText = (v: unknown): string => (v === null || v === undefined || typeof v === 'object' ? '' : String(v))
+  const openFilter = (): void => {
+    const hr = filter?.r1 ?? r1
+    const lr = filter?.r2 ?? r2
+    const col = sel.ac
+    const seen = new Set<string>()
+    const values: string[] = []
+    for (let r = hr + 1; r <= lr; r++) {
+      const t = cellText(engine.getValue(r, col))
+      if (!seen.has(t)) { seen.add(t); values.push(t) }
+    }
+    values.sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    const allowed = filter?.cols[col]
+    const checked: Record<string, boolean> = {}
+    for (const v of values) checked[v] = allowed ? allowed.includes(v) : true
+    if (!filter) setFilter({ r1: hr, r2: lr, cols: {} })
+    setFilterDlg({ col, values, checked })
+  }
+  const applyFilter = (): void => {
+    if (!filterDlg) return
+    const allowed = filterDlg.values.filter((v) => filterDlg.checked[v])
+    setFilter((f) => { const base = f ?? { r1, r2, cols: {} }; return { ...base, cols: { ...base.cols, [filterDlg.col]: allowed } } })
+    setFilterDlg(null)
+  }
+  const clearFilter = (): void => { setFilter(null); setFilterDlg(null) }
+  const hiddenRows = ((): Set<number> | undefined => {
+    if (!filter) return undefined
+    const entries = Object.entries(filter.cols)
+    if (!entries.length) return undefined
+    const hidden = new Set<number>()
+    for (let r = filter.r1 + 1; r <= filter.r2; r++) {
+      for (const [colStr, allowed] of entries) {
+        if (!allowed.includes(cellText(engine.getValue(r, Number(colStr))))) { hidden.add(r); break }
+      }
+    }
+    return hidden
+  })()
 
   const setSel = (s: Sel): void => {
     if (editing !== null) {
@@ -333,7 +385,8 @@ export function App(): ReactNode {
             { key: 'ar', label: 'Direita', icon: <TextAlignRight24Regular />, active: activeStyle.align === 'right', onClick: () => set({ align: 'right' }) },
             { key: 'wrap', label: 'Quebrar texto', icon: txtIcon('⤶'), active: !!activeStyle.wrap, onClick: () => toggle('wrap') },
             { key: 'merge', label: 'Mesclar e centralizar', icon: txtIcon('⬌'), disabled: !(r1 === r2 && c1 < c2), onClick: mergeCells },
-            { key: 'unmerge', label: 'Separar', icon: txtIcon('⬍'), disabled: !hasMergeInSel, onClick: unmergeCells }
+            { key: 'unmerge', label: 'Separar', icon: txtIcon('⬍'), disabled: !hasMergeInSel, onClick: unmergeCells },
+            { key: 'condfmt', label: 'Form. condicional', icon: txtIcon('▦'), menu: <MenuList><MenuItem onClick={() => openCf('>')}>Maior que…</MenuItem><MenuItem onClick={() => openCf('<')}>Menor que…</MenuItem><MenuItem onClick={() => openCf('between')}>Entre…</MenuItem><MenuItem onClick={clearCf}>Limpar regras</MenuItem></MenuList> }
           ]
         },
         {
@@ -442,6 +495,13 @@ export function App(): ReactNode {
             { key: 'fcol', label: 'Congelar coluna', icon: txtIcon('▥'), onClick: () => setFreeze((f) => ({ ...f, c: 1 })) },
             { key: 'unf', label: 'Descongelar', icon: txtIcon('✕'), disabled: freeze.r === 0 && freeze.c === 0, onClick: () => setFreeze({ r: 0, c: 0 }) }
           ]
+        },
+        {
+          label: 'Dados',
+          items: [
+            { key: 'filter', label: 'Filtrar coluna', icon: txtIcon('▼'), onClick: openFilter },
+            { key: 'clearfilter', label: 'Limpar filtro', icon: txtIcon('✕'), disabled: !filter, onClick: clearFilter }
+          ]
         }
       ]
     }
@@ -474,7 +534,7 @@ export function App(): ReactNode {
         </div>
 
         <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-          <Grid engine={engine} styles={styles} merges={merges} rows={ROWS} cols={COLS} rev={rev} freezeR={freeze.r} freezeC={freeze.c} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
+          <Grid engine={engine} styles={styles} merges={merges} condFormats={condFormats} hiddenRows={hiddenRows} rows={ROWS} cols={COLS} rev={rev} freezeR={freeze.r} freezeC={freeze.c} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
           <ChartLayer charts={charts} engine={engine} rev={rev} selId={selChart} onSelect={setSelChart} onChange={updateChart} onDelete={deleteChart} />
         </div>
 
@@ -515,6 +575,69 @@ export function App(): ReactNode {
             <DialogActions>
               <Button onClick={() => setFr((f) => ({ ...f, open: false }))}>Cancelar</Button>
               <Button appearance="primary" onClick={runFindReplace} disabled={!fr.find}>Substituir tudo</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      <Dialog open={cf.open} onOpenChange={(_, d) => setCf((c) => ({ ...c, open: d.open }))}>
+        <DialogSurface style={{ maxWidth: 420 }}>
+          <DialogBody>
+            <DialogTitle>Formatação condicional</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Field label="Realçar células do intervalo selecionado onde o valor for:">
+                  <select value={cf.op} onChange={(e) => setCf((c) => ({ ...c, op: e.target.value as CondRule['op'] }))} style={{ padding: '5px 6px', border: '1px solid var(--ao-border)', borderRadius: 4 }}>
+                    <option value=">">Maior que</option>
+                    <option value="<">Menor que</option>
+                    <option value=">=">Maior ou igual a</option>
+                    <option value="<=">Menor ou igual a</option>
+                    <option value="=">Igual a</option>
+                    <option value="<>">Diferente de</option>
+                    <option value="between">Entre</option>
+                  </select>
+                </Field>
+                <Field label="Valor">
+                  <Input value={cf.v1} onChange={(_, d) => setCf((c) => ({ ...c, v1: d.value }))} />
+                </Field>
+                {cf.op === 'between' && (
+                  <Field label="e">
+                    <Input value={cf.v2} onChange={(_, d) => setCf((c) => ({ ...c, v2: d.value }))} />
+                  </Field>
+                )}
+                <Field label="Cor de preenchimento">
+                  <select value={cf.fill} onChange={(e) => setCf((c) => ({ ...c, fill: e.target.value }))} style={{ padding: '5px 6px', border: '1px solid var(--ao-border)', borderRadius: 4 }}>
+                    <option value="#fdf3d0">Amarelo</option>
+                    <option value="#eef7f0">Verde</option>
+                    <option value="#fbe4ea">Rosa</option>
+                    <option value="#e4eefb">Azul</option>
+                    <option value="#eef0ee">Cinza</option>
+                  </select>
+                </Field>
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setCf((c) => ({ ...c, open: false }))}>Cancelar</Button>
+              <Button appearance="primary" onClick={applyCf} disabled={!cf.v1}>Aplicar</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      <Dialog open={!!filterDlg} onOpenChange={(_, d) => !d.open && setFilterDlg(null)}>
+        <DialogSurface style={{ maxWidth: 360 }}>
+          <DialogBody>
+            <DialogTitle>Filtrar coluna {filterDlg ? colToLetter(filterDlg.col) : ''}</DialogTitle>
+            <DialogContent>
+              <div style={{ maxHeight: 280, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {filterDlg?.values.map((v) => (
+                  <Checkbox key={v} label={v === '' ? '(vazias)' : v} checked={filterDlg.checked[v]} onChange={(_, d) => setFilterDlg((f) => (f ? { ...f, checked: { ...f.checked, [v]: !!d.checked } } : f))} />
+                ))}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setFilterDlg(null)}>Cancelar</Button>
+              <Button appearance="primary" onClick={applyFilter}>Aplicar</Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>
