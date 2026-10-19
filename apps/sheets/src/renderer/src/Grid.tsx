@@ -1,8 +1,9 @@
 // Grade de células: seleção de intervalo, edição, estilos e teclado.
-import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from '@fluentui/react-components'
 import { type SheetEngine, type CellValue, colToLetter } from '@alcina/sheets-engine'
 import { cellKey, type CellStyle, type Merge, type CondRule, type Validation } from './model'
+import { fillPlan } from './ops'
 import { formatCell } from './format'
 
 const W = 94
@@ -29,6 +30,7 @@ export interface GridProps {
   hiddenRows?: Set<number>
   validations?: Validation[]
   onSetValue?: (r: number, c: number, text: string) => void
+  onFill?: (r: number, c: number) => void
   sel: Sel
   editing: string | null
   setSel: (s: Sel) => void
@@ -51,10 +53,22 @@ export function Grid(props: GridProps): ReactNode {
   const selRef = useRef(sel)
   selRef.current = sel
   const dragging = useRef(false)
+  const filling = useRef(false)
+  const fillToRef = useRef<{ r: number; c: number } | null>(null)
+  const onFillRef = useRef(props.onFill)
+  onFillRef.current = props.onFill
+  const [fillTo, setFillTo] = useState<{ r: number; c: number } | null>(null)
 
   useEffect(() => {
     const up = (): void => {
       dragging.current = false
+      if (filling.current) {
+        filling.current = false
+        const t = fillToRef.current
+        if (t) onFillRef.current?.(t.r, t.c)
+        fillToRef.current = null
+        setFillTo(null)
+      }
     }
     window.addEventListener('pointerup', up)
     return () => window.removeEventListener('pointerup', up)
@@ -184,9 +198,24 @@ export function Grid(props: GridProps): ReactNode {
     </div>
   )
 
+  const showHandle = editing === null && !hiddenRows && !!props.onFill
+  const handleLeft = RNW + (c2 + 1) * W
+  const handleTop = H + (r2 + 1) * H
+  let preview: { left: number; top: number; w: number; h: number } | null = null
+  if (fillTo) {
+    const plan = fillPlan({ r1, c1, r2, c2 }, fillTo.r, fillTo.c)
+    if (plan) {
+      const nr1 = plan.axis === 'row' && plan.back ? r1 - plan.g : r1
+      const nr2 = plan.axis === 'row' && !plan.back ? r2 + plan.g : r2
+      const nc1 = plan.axis === 'col' && plan.back ? c1 - plan.g : c1
+      const nc2 = plan.axis === 'col' && !plan.back ? c2 + plan.g : c2
+      preview = { left: RNW + nc1 * W, top: H + nr1 * H, w: (nc2 - nc1 + 1) * W, h: (nr2 - nr1 + 1) * H }
+    }
+  }
+
   return (
     <div tabIndex={0} onKeyDown={onKeyDown} style={{ height: '100%', overflow: 'auto', outline: 'none', background: 'var(--ao-bg)' }}>
-      <div style={{ width: RNW + cols * W, minWidth: '100%' }}>
+      <div style={{ width: RNW + cols * W, minWidth: '100%', position: 'relative' }}>
         <div style={{ display: 'flex', position: 'sticky', top: 0, zIndex: 2 }}>
           {header('', RNW, true, false, 'corner')}
           {Array.from({ length: cols }, (_, c) => header(colToLetter(c), W, false, c >= c1 && c <= c2, c))}
@@ -265,7 +294,10 @@ export function Grid(props: GridProps): ReactNode {
                     }
                   }}
                   onPointerEnter={() => {
-                    if (dragging.current) props.setSel({ ar: selRef.current.ar, ac: selRef.current.ac, fr: r, fc: c })
+                    if (filling.current) {
+                      fillToRef.current = { r, c }
+                      setFillTo({ r, c })
+                    } else if (dragging.current) props.setSel({ ar: selRef.current.ar, ac: selRef.current.ac, fr: r, fc: c })
                   }}
                   onDoubleClick={() => props.onStartEdit(engine.getRaw(r, c))}
                 >
@@ -319,6 +351,22 @@ export function Grid(props: GridProps): ReactNode {
           </div>
           )
         })}
+        {preview && (
+          <div style={{ position: 'absolute', left: preview.left, top: preview.top, width: preview.w, height: preview.h, border: '2px dashed var(--ao-green)', background: 'rgba(16,124,65,0.06)', pointerEvents: 'none', zIndex: 5 }} />
+        )}
+        {showHandle && (
+          <div
+            title="Arraste para preencher"
+            onPointerDown={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              filling.current = true
+              fillToRef.current = null
+              setFillTo(null)
+            }}
+            style={{ position: 'absolute', left: handleLeft - 4, top: handleTop - 4, width: 7, height: 7, background: 'var(--ao-green)', border: '1px solid #fff', borderRadius: 1, cursor: 'crosshair', zIndex: 6 }}
+          />
+        )}
       </div>
     </div>
   )

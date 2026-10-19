@@ -34,7 +34,7 @@ import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
 import { colToLetter } from '@alcina/sheets-engine'
 import { newSheet, cellKey, type SheetDoc, type CellStyle, type NumFmt, type ChartObj, type ChartType, type CondRule } from './model'
-import { remap, sortBlock, findReplaceAll } from './ops'
+import { remap, sortBlock, findReplaceAll, fillPlan, fillSeries } from './ops'
 import { Grid, type Sel } from './Grid'
 import { ChartLayer } from './ChartLayer'
 import { saveWorkbook, openWorkbook, importCsv, exportCsv, importXlsx, exportXlsx } from './io'
@@ -175,6 +175,54 @@ export function App(): ReactNode {
   }
   const onSetCellValue = (r: number, c: number, text: string): void => {
     engine.setCell(r, c, text)
+    bump()
+  }
+  // Alça de preenchimento: arrastar até (tr,tc) estende a série da seleção.
+  const onFill = (tr: number, tc: number): void => {
+    const plan = fillPlan({ r1, c1, r2, c2 }, tr, tc)
+    if (!plan) return
+    const { axis, g, back } = plan
+    const styleCopies: Array<[string, CellStyle]> = []
+    const addFill = (seed: string[], L: number, targets: Array<{ p: number; tr: number; tc: number }>, seedAt: (b: number, t: { tr: number; tc: number }) => string): void => {
+      const vals = fillSeries(seed, targets.map((t) => t.p), axis)
+      targets.forEach((t, k) => {
+        engine.setCell(t.tr, t.tc, vals[k])
+        const b = ((t.p % L) + L) % L
+        const st = styles[seedAt(b, t)]
+        if (st) styleCopies.push([cellKey(t.tr, t.tc), st])
+      })
+    }
+    if (axis === 'row') {
+      const L = r2 - r1 + 1
+      for (let c = c1; c <= c2; c++) {
+        const seed: string[] = []
+        for (let r = r1; r <= r2; r++) seed.push(engine.getRaw(r, c))
+        const targets: Array<{ p: number; tr: number; tc: number }> = []
+        for (let i = 1; i <= g; i++) {
+          const row = back ? r1 - i : r2 + i
+          if (row < 0 || row >= ROWS) continue
+          targets.push({ p: row - r1, tr: row, tc: c })
+        }
+        addFill(seed, L, targets, (b) => cellKey(r1 + b, c))
+      }
+    } else {
+      const L = c2 - c1 + 1
+      for (let r = r1; r <= r2; r++) {
+        const seed: string[] = []
+        for (let c = c1; c <= c2; c++) seed.push(engine.getRaw(r, c))
+        const targets: Array<{ p: number; tr: number; tc: number }> = []
+        for (let i = 1; i <= g; i++) {
+          const col = back ? c1 - i : c2 + i
+          if (col < 0 || col >= COLS) continue
+          targets.push({ p: col - c1, tr: r, tc: col })
+        }
+        addFill(seed, L, targets, (b) => cellKey(r, c1 + b))
+      }
+    }
+    if (styleCopies.length) setSheets((arr) => arr.map((sh, i) => (i === idx ? { ...sh, styles: { ...sh.styles, ...Object.fromEntries(styleCopies) } } : sh)))
+    const nr2 = axis === 'row' ? (back ? Math.max(0, r1 - g) : Math.min(ROWS - 1, r2 + g)) : r2
+    const nc2 = axis === 'col' ? (back ? Math.max(0, c1 - g) : Math.min(COLS - 1, c2 + g)) : c2
+    setSelState({ ar: r1, ac: c1, fr: nr2, fc: nc2 })
     bump()
   }
   const selStats = ((): { count: number; sum: number; nonEmpty: number } => {
@@ -568,7 +616,7 @@ export function App(): ReactNode {
         </div>
 
         <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-          <Grid engine={engine} styles={styles} merges={merges} condFormats={condFormats} hiddenRows={hiddenRows} validations={validations} onSetValue={onSetCellValue} rows={ROWS} cols={COLS} rev={rev} freezeR={freeze.r} freezeC={freeze.c} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
+          <Grid engine={engine} styles={styles} merges={merges} condFormats={condFormats} hiddenRows={hiddenRows} validations={validations} onSetValue={onSetCellValue} onFill={onFill} rows={ROWS} cols={COLS} rev={rev} freezeR={freeze.r} freezeC={freeze.c} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
           <ChartLayer charts={charts} engine={engine} rev={rev} selId={selChart} onSelect={setSelChart} onChange={updateChart} onDelete={deleteChart} />
         </div>
 
