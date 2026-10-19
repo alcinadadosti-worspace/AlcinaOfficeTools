@@ -21,6 +21,8 @@ export interface GridProps {
   rows: number
   cols: number
   rev: number
+  freezeR?: number
+  freezeC?: number
   sel: Sel
   editing: string | null
   setSel: (s: Sel) => void
@@ -35,6 +37,8 @@ export interface GridProps {
 
 export function Grid(props: GridProps): ReactNode {
   const { engine, styles, rows, cols, sel, editing } = props
+  const freezeR = props.freezeR ?? 0
+  const freezeC = props.freezeC ?? 0
   const selRef = useRef(sel)
   selRef.current = sel
   const dragging = useRef(false)
@@ -167,8 +171,10 @@ export function Grid(props: GridProps): ReactNode {
           {header('', RNW, true, false, 'corner')}
           {Array.from({ length: cols }, (_, c) => header(colToLetter(c), W, false, c >= c1 && c <= c2, c))}
         </div>
-        {Array.from({ length: rows }, (_, r) => (
-          <div key={r} style={{ display: 'flex' }}>
+        {Array.from({ length: rows }, (_, r) => {
+          const frozenRow = r < freezeR
+          return (
+          <div key={r} style={frozenRow ? { display: 'flex', position: 'sticky', top: H * (r + 1), zIndex: 3, background: 'var(--ao-surface)' } : { display: 'flex' }}>
             {header(String(r + 1), RNW, true, r >= r1 && r <= r2, 'rn')}
             {Array.from({ length: cols }, (_, c) => {
               const key = cellKey(r, c)
@@ -180,6 +186,7 @@ export function Grid(props: GridProps): ReactNode {
               const numeric = typeof dv === 'number'
               const inRange = r >= r1 && r <= r2 && c >= c1 && c <= c2
               const active = r === sel.ar && c === sel.ac
+              const frozenCol = c < freezeC
               const align = st?.align ?? (numeric ? 'right' : 'left')
               const bc = 'var(--ao-text-2)'
               const cs: CSSProperties = {
@@ -207,8 +214,9 @@ export function Grid(props: GridProps): ReactNode {
                 whiteSpace: st?.wrap ? 'normal' : 'nowrap',
                 wordBreak: st?.wrap ? 'break-word' : 'normal',
                 cursor: 'cell',
-                position: 'relative',
-                zIndex: active ? 1 : 0
+                position: frozenCol ? 'sticky' : 'relative',
+                left: frozenCol ? RNW + c * W : undefined,
+                zIndex: frozenCol ? 2 : active ? 1 : 0
               }
               return (
                 <div
@@ -256,7 +264,8 @@ export function Grid(props: GridProps): ReactNode {
               )
             })}
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

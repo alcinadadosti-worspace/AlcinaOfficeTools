@@ -68,7 +68,8 @@ export function App(): ReactNode {
   const [notice, setNotice] = useState<string | null>(null)
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [version, setVersion] = useState('')
-  const [, bump] = useReducer((n: number) => n + 1, 0)
+  const [rev, bump] = useReducer((n: number) => n + 1, 0)
+  const [freeze, setFreeze] = useState<{ r: number; c: number }>({ r: 0, c: 0 })
 
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
@@ -380,6 +381,21 @@ export function App(): ReactNode {
           ]
         }
       ]
+    },
+    {
+      key: 'view',
+      label: 'Exibir',
+      groups: [
+        {
+          label: 'Janela',
+          items: [
+            { key: 'fp', label: 'Congelar painéis', icon: txtIcon('❄'), onClick: () => setFreeze({ r: sel.ar, c: sel.ac }) },
+            { key: 'frow', label: 'Congelar linha', icon: txtIcon('▤'), onClick: () => setFreeze((f) => ({ ...f, r: 1 })) },
+            { key: 'fcol', label: 'Congelar coluna', icon: txtIcon('▥'), onClick: () => setFreeze((f) => ({ ...f, c: 1 })) },
+            { key: 'unf', label: 'Descongelar', icon: txtIcon('✕'), disabled: freeze.r === 0 && freeze.c === 0, onClick: () => setFreeze({ r: 0, c: 0 }) }
+          ]
+        }
+      ]
     }
   ]
 
@@ -410,7 +426,7 @@ export function App(): ReactNode {
         </div>
 
         <div style={{ flex: 1, minHeight: 0 }}>
-          <Grid engine={engine} styles={styles} rows={ROWS} cols={COLS} rev={0} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
+          <Grid engine={engine} styles={styles} rows={ROWS} cols={COLS} rev={rev} freezeR={freeze.r} freezeC={freeze.c} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'stretch', height: 30, borderTop: '1px solid var(--ao-border)', background: 'var(--ao-surface)', flex: 'none' }}>
