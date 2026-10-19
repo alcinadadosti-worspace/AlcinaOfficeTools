@@ -1,5 +1,5 @@
 // AlcinaDocs: editor de documentos com aba Página Inicial completa.
-import { useEffect, useRef, useState, type ReactNode, type JSX } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type JSX, type ChangeEvent } from 'react'
 import { MenuList, MenuItem, Dialog, DialogSurface, DialogBody, DialogTitle, DialogContent, DialogActions, Button, Input, Field, Checkbox } from '@fluentui/react-components'
 import {
   TextBold24Regular,
@@ -31,13 +31,15 @@ import {
   Save24Regular,
   DocumentTable24Regular,
   ArrowDownload24Regular,
-  DocumentPdf24Regular
+  DocumentPdf24Regular,
+  Image24Regular,
+  TextQuote24Regular
 } from '@fluentui/react-icons'
 import type { Command } from 'prosemirror-state'
 import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
-import { Editor, cmd, setColor, setHighlight, setFontSize, setFontFamily, setLineHeight, changeCase as cmdCase, type EditorApi, type Snapshot } from '@alcina/editor'
+import { Editor, cmd, setColor, setHighlight, setFontSize, setFontFamily, setLineHeight, changeCase as cmdCase, insertImage, type EditorApi, type Snapshot } from '@alcina/editor'
 import { saveDoc, openDoc, importDocx, exportDocx, exportPdf, baseName } from './io'
 
 const EMPTY: Snapshot = { strong: false, em: false, underline: false, strike: false, sub: false, sup: false, heading: 0, align: null, canUndo: false, canRedo: false }
@@ -56,6 +58,7 @@ function txt(t: string): JSX.Element {
 
 export function App(): ReactNode {
   const apiRef = useRef<EditorApi | null>(null)
+  const imgInput = useRef<HTMLInputElement>(null)
   const [snap, setSnap] = useState<Snapshot>(EMPTY)
   const [path, setPath] = useState<string | null>(null)
   const [fr, setFr] = useState<{ open: boolean; find: string; replace: string; matchCase: boolean }>({ open: false, find: '', replace: '', matchCase: false })
@@ -80,6 +83,21 @@ export function App(): ReactNode {
     const n = apiRef.current?.replaceAll(fr.find, fr.replace, fr.matchCase) ?? 0
     setNotice(`${n} substituição(ões) feita(s).`)
     setFr((f) => ({ ...f, open: false }))
+  }
+
+  const onPickImage = (e: ChangeEvent<HTMLInputElement>): void => {
+    const f = e.target.files?.[0]
+    if (f) {
+      const reader = new FileReader()
+      reader.onload = () => exec(insertImage(String(reader.result)))
+      reader.readAsDataURL(f)
+    }
+    e.target.value = ''
+  }
+
+  const wordCount = (): void => {
+    const s = apiRef.current?.stats()
+    if (s) setNotice(`${s.words} palavra(s) · ${s.chars} caractere(s) (${s.charsNoSpaces} sem espaços).`)
   }
 
   const colorMenu = (apply: (c: string) => Command, list: [string, string][]): ReactNode => (
@@ -148,6 +166,33 @@ export function App(): ReactNode {
       ]
     },
     {
+      key: 'insert',
+      label: 'Inserir',
+      groups: [
+        {
+          label: 'Ilustrações',
+          items: [{ key: 'img', label: 'Imagem', icon: <Image24Regular />, onClick: () => imgInput.current?.click() }]
+        },
+        {
+          label: 'Elementos',
+          items: [
+            { key: 'hr', label: 'Linha horizontal', icon: txt('—'), onClick: () => exec(cmd.hr) },
+            { key: 'quote', label: 'Citação', icon: <TextQuote24Regular />, onClick: () => exec(cmd.quote) }
+          ]
+        }
+      ]
+    },
+    {
+      key: 'review',
+      label: 'Revisão',
+      groups: [
+        {
+          label: 'Revisão de texto',
+          items: [{ key: 'wc', label: 'Contar palavras', icon: txt('123'), onClick: wordCount }]
+        }
+      ]
+    },
+    {
       key: 'file',
       label: 'Arquivo',
       groups: [
@@ -179,6 +224,7 @@ export function App(): ReactNode {
           <button onClick={() => setNotice(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ao-text-2)' }}>×</button>
         </div>
       )}
+      <input ref={imgInput} type="file" accept="image/*" hidden onChange={onPickImage} />
       <div className="ao-doc-scroll">
         <div className="ao-doc-page">
           <Editor apiRef={apiRef} onState={setSnap} />

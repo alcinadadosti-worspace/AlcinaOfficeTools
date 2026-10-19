@@ -14,6 +14,14 @@ const insertHr: Command = (state, dispatch) => {
   return true
 }
 
+/** Insere uma imagem (data URL) na posição do cursor. */
+export const insertImage = (src: string, alt = ''): Command => (state, dispatch) => {
+  if (!src) return false
+  const node = schema.nodes.image.create({ src, alt })
+  if (dispatch) dispatch(state.tr.replaceSelectionWith(node).scrollIntoView())
+  return true
+}
+
 /** Define (ou remove) uma marca com atributos sobre a seleção. */
 function applyMark(type: MarkType, attrs: Record<string, unknown> | null): Command {
   return (state, dispatch) => {

@@ -30,6 +30,7 @@ export interface EditorApi {
   getBlocks(): DocBlock[]
   getPrintHtml(): string
   replaceAll(find: string, replace: string, matchCase: boolean): number
+  stats(): { words: number; chars: number; charsNoSpaces: number }
   focus(): void
 }
 
@@ -108,6 +109,11 @@ export function Editor({ apiRef, onState }: { apiRef: MutableRefObject<EditorApi
         view.dispatch(tr)
         onState(snapshotOf(view.state))
         return matches.length
+      },
+      stats: () => {
+        const text = view.state.doc.textBetween(0, view.state.doc.content.size, ' ', ' ')
+        const words = (text.match(/\S+/g) || []).length
+        return { words, chars: text.length, charsNoSpaces: text.replace(/\s/g, '').length }
       },
       getPrintHtml: () => {
         const frag = serializer.serializeFragment(view.state.doc.content)
