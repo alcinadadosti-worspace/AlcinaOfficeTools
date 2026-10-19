@@ -177,6 +177,19 @@ export function App(): ReactNode {
     engine.setCell(r, c, text)
     bump()
   }
+  const selStats = ((): { count: number; sum: number; nonEmpty: number } => {
+    let count = 0
+    let sum = 0
+    let nonEmpty = 0
+    for (let r = r1; r <= r2; r++) {
+      for (let c = c1; c <= c2; c++) {
+        const v = engine.getValue(r, c)
+        if (v !== null && v !== '') nonEmpty++
+        if (typeof v === 'number') { count++; sum += v }
+      }
+    }
+    return { count, sum, nonEmpty }
+  })()
   const hiddenRows = ((): Set<number> | undefined => {
     if (!filter) return undefined
     const entries = Object.entries(filter.cols)
@@ -575,6 +588,14 @@ export function App(): ReactNode {
           <button onClick={() => { setSheets((arr) => [...arr, newSheet(`Planilha${arr.length + 1}`)]); setActive(sheets.length) }} aria-label="Nova planilha" style={{ display: 'flex', alignItems: 'center', padding: '0 10px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ao-green)' }}>
             <Add16Regular />
           </button>
+          <div style={{ flex: 1 }} />
+          {(r2 > r1 || c2 > c1) && selStats.count > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '0 16px', fontSize: 12, color: 'var(--ao-text-2)', fontFamily: 'Consolas, monospace' }}>
+              <span>Média: {(selStats.sum / selStats.count).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
+              <span>Contagem: {selStats.nonEmpty}</span>
+              <span>Soma: {selStats.sum.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</span>
+            </div>
+          )}
         </div>
       </div>
 
