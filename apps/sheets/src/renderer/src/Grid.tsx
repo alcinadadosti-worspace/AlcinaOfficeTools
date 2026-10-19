@@ -1,6 +1,6 @@
 // Grade de células: seleção de intervalo, edição, estilos e teclado.
-import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
-import { type SheetEngine, colToLetter } from '@alcina/sheets-engine'
+import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
+import { type SheetEngine, type CellValue, colToLetter } from '@alcina/sheets-engine'
 import { cellKey, type CellStyle } from './model'
 import { formatCell } from './format'
 
@@ -46,6 +46,43 @@ export function Grid(props: GridProps): ReactNode {
     window.addEventListener('pointerup', up)
     return () => window.removeEventListener('pointerup', up)
   }, [])
+
+  // Overlay de derramamento (spill): mapeia células cobertas por matrizes ancoradas.
+  const { spillMap, conflict } = useMemo(() => {
+    const sm = new Map<string, { value: CellValue; anchor: boolean }>()
+    const cf = new Set<string>()
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const m = engine.getSpill(r, c)
+        if (!m || (m.rows <= 1 && m.cols <= 1)) continue
+        let bad = false
+        for (let i = 0; i < m.rows && !bad; i++) {
+          for (let j = 0; j < m.cols; j++) {
+            if (i === 0 && j === 0) continue
+            const tr = r + i
+            const tc = c + j
+            if (tr < rows && tc < cols && engine.getRaw(tr, tc) !== '') {
+              bad = true
+              break
+            }
+          }
+        }
+        if (bad) {
+          cf.add(cellKey(r, c))
+          continue
+        }
+        for (let i = 0; i < m.rows; i++) {
+          for (let j = 0; j < m.cols; j++) {
+            const tr = r + i
+            const tc = c + j
+            if (tr < rows && tc < cols) sm.set(cellKey(tr, tc), { value: m.cells[i][j] ?? null, anchor: i === 0 && j === 0 })
+          }
+        }
+      }
+    }
+    return { spillMap: sm, conflict: cf }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine, rows, cols, props.rev])
 
   const r1 = Math.min(sel.ar, sel.fr)
   const r2 = Math.max(sel.ar, sel.fr)
@@ -134,9 +171,13 @@ export function Grid(props: GridProps): ReactNode {
           <div key={r} style={{ display: 'flex' }}>
             {header(String(r + 1), RNW, true, r >= r1 && r <= r2, 'rn')}
             {Array.from({ length: cols }, (_, c) => {
-              const st = styles[cellKey(r, c)]
+              const key = cellKey(r, c)
+              const st = styles[key]
               const v = engine.getValue(r, c)
-              const numeric = typeof v === 'number'
+              const spillInfo = spillMap.get(key)
+              const isConflict = conflict.has(key)
+              const dv: CellValue = isConflict ? '#DERRAM!' : spillInfo && !spillInfo.anchor ? spillInfo.value : v
+              const numeric = typeof dv === 'number'
               const inRange = r >= r1 && r <= r2 && c >= c1 && c <= c2
               const active = r === sel.ar && c === sel.ac
               const align = st?.align ?? (numeric ? 'right' : 'left')
@@ -155,7 +196,7 @@ export function Grid(props: GridProps): ReactNode {
                 fontStyle: st?.italic ? 'italic' : 'normal',
                 textDecoration: st?.underline ? 'underline' : 'none',
                 color: st?.color || 'var(--ao-text)',
-                background: st?.fill || (inRange && !active ? 'var(--ao-green-soft)' : '#fff'),
+                background: st?.fill || (inRange && !active ? 'var(--ao-green-soft)' : spillInfo && !isConflict ? 'rgba(16,124,65,0.06)' : '#fff'),
                 borderRight: st?.br ? `1.5px solid ${bc}` : '1px solid var(--ao-border)',
                 borderBottom: st?.bb ? `1.5px solid ${bc}` : '1px solid var(--ao-border)',
                 borderTop: st?.bt ? `1.5px solid ${bc}` : undefined,
@@ -206,8 +247,10 @@ export function Grid(props: GridProps): ReactNode {
                       }}
                       style={{ width: '100%', height: '100%', border: 'none', outline: 'none', font: 'inherit', background: 'transparent', padding: 0, textAlign: align }}
                     />
+                  ) : isConflict ? (
+                    <span style={{ color: '#b64a38', fontWeight: 600 }} title="O intervalo de derramamento não está vazio.">#DERRAM!</span>
                   ) : (
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatCell(v, st)}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatCell(dv, st)}</span>
                   )}
                 </div>
               )

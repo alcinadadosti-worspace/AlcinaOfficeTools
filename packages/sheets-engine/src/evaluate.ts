@@ -15,6 +15,7 @@ export interface CellEntry {
 export class SheetEngine {
   private cells = new Map<string, string>()
   private cache = new Map<string, CellValue>()
+  private spillCache = new Map<string, Matrix>()
   private stack = new Set<string>()
   private cur: { row: number; col: number } | null = null
   rows = 0
@@ -31,6 +32,7 @@ export class SheetEngine {
       this.cols = Math.max(this.cols, col + 1)
     }
     this.cache.clear()
+    this.spillCache.clear()
   }
 
   getRaw(row: number, col: number): string {
@@ -69,7 +71,13 @@ export class SheetEngine {
     this.cur = { row, col }
     let v: CellValue
     try {
-      v = this.evalRaw(raw)
+      const av = this.evalRawArg(raw)
+      if (isMatrix(av)) {
+        if (av.rows > 1 || av.cols > 1) this.spillCache.set(k, av)
+        v = av.cells[0]?.[0] ?? null
+      } else {
+        v = av
+      }
     } catch {
       v = err('#VALOR!')
     }
@@ -79,13 +87,20 @@ export class SheetEngine {
     return v
   }
 
-  private evalRaw(raw: string): CellValue {
-    if (raw[0] === '=') return this.eval(parseFormula(raw.slice(1)))
+  /** Avalia o conteúdo bruto, preservando matrizes do nível superior (para o spill). */
+  private evalRawArg(raw: string): ArgValue {
+    if (raw[0] === '=') return this.evalArg(parseFormula(raw.slice(1)))
     const up = raw.toUpperCase()
     if (up === 'VERDADEIRO' || up === 'TRUE') return true
     if (up === 'FALSO' || up === 'FALSE') return false
     const n = parseNumber(raw)
     return n === null ? raw : n
+  }
+
+  /** Matriz derramada (spill) ancorada nesta célula, ou null. */
+  getSpill(row: number, col: number): Matrix | null {
+    this.getValue(row, col)
+    return this.spillCache.get(cellKey(row, col)) ?? null
   }
 
   private eval(node: Node): CellValue {
