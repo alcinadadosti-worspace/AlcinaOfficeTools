@@ -33,13 +33,14 @@ import {
   ArrowDownload24Regular,
   DocumentPdf24Regular,
   Image24Regular,
-  TextQuote24Regular
+  TextQuote24Regular,
+  Table24Regular
 } from '@fluentui/react-icons'
 import type { Command } from 'prosemirror-state'
 import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
-import { Editor, cmd, setColor, setHighlight, setFontSize, setFontFamily, setLineHeight, changeCase as cmdCase, insertImage, type EditorApi, type Snapshot } from '@alcina/editor'
+import { Editor, cmd, setColor, setHighlight, setFontSize, setFontFamily, setLineHeight, changeCase as cmdCase, insertImage, insertTable, table, type EditorApi, type Snapshot } from '@alcina/editor'
 import { saveDoc, openDoc, importDocx, exportDocx, exportPdf, baseName } from './io'
 
 const EMPTY: Snapshot = { strong: false, em: false, underline: false, strike: false, sub: false, sup: false, heading: 0, align: null, canUndo: false, canRedo: false }
@@ -174,6 +175,10 @@ export function App(): ReactNode {
           items: [{ key: 'img', label: 'Imagem', icon: <Image24Regular />, onClick: () => imgInput.current?.click() }]
         },
         {
+          label: 'Tabelas',
+          items: [{ key: 'tbl', label: 'Tabela', icon: <Table24Regular />, onClick: () => exec(insertTable(3, 3)) }]
+        },
+        {
           label: 'Elementos',
           items: [
             { key: 'hr', label: 'Linha horizontal', icon: txt('—'), onClick: () => exec(cmd.hr) },
@@ -189,6 +194,32 @@ export function App(): ReactNode {
         {
           label: 'Revisão de texto',
           items: [{ key: 'wc', label: 'Contar palavras', icon: txt('123'), onClick: wordCount }]
+        }
+      ]
+    },
+    {
+      key: 'table',
+      label: 'Tabela',
+      groups: [
+        {
+          label: 'Linhas e colunas',
+          items: [
+            { key: 'ar', label: 'Inserir linha', icon: txt('+L'), onClick: () => exec(table.addRowAfter) },
+            { key: 'ac', label: 'Inserir coluna', icon: txt('+C'), onClick: () => exec(table.addColumnAfter) },
+            { key: 'dr', label: 'Excluir linha', icon: txt('−L'), onClick: () => exec(table.deleteRow) },
+            { key: 'dc', label: 'Excluir coluna', icon: txt('−C'), onClick: () => exec(table.deleteColumn) }
+          ]
+        },
+        {
+          label: 'Células',
+          items: [
+            { key: 'mg', label: 'Mesclar', icon: txt('⊞'), onClick: () => exec(table.mergeCells) },
+            { key: 'sp', label: 'Dividir', icon: txt('⊟'), onClick: () => exec(table.splitCell) }
+          ]
+        },
+        {
+          label: 'Tabela',
+          items: [{ key: 'dt', label: 'Excluir tabela', icon: txt('✕'), onClick: () => exec(table.deleteTable) }]
         }
       ]
     },

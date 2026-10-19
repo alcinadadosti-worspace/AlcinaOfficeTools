@@ -2,6 +2,7 @@
 import { Schema, type NodeSpec, type MarkSpec } from 'prosemirror-model'
 import { schema as basic } from 'prosemirror-schema-basic'
 import { addListNodes } from 'prosemirror-schema-list'
+import { tableNodes } from 'prosemirror-tables'
 
 function blockStyle(attrs: { align?: string | null; indent?: number; lineHeight?: string | null }): string {
   const parts: string[] = []
@@ -36,6 +37,7 @@ const heading: NodeSpec = {
 
 let nodes = basic.spec.nodes.update('paragraph', paragraph).update('heading', heading)
 nodes = addListNodes(nodes, 'paragraph block*', 'block')
+nodes = nodes.append(tableNodes({ tableGroup: 'block', cellContent: 'block+', cellAttributes: {} }))
 
 const underline: MarkSpec = { parseDOM: [{ tag: 'u' }, { style: 'text-decoration=underline' }], toDOM: () => ['u', 0] }
 const strike: MarkSpec = { parseDOM: [{ tag: 's' }, { tag: 'del' }, { style: 'text-decoration=line-through' }], toDOM: () => ['s', 0] }

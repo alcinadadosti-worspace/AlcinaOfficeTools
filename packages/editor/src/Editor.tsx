@@ -4,6 +4,7 @@ import { EditorState, type Command } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import { DOMParser as PMDOMParser, DOMSerializer, type MarkType } from 'prosemirror-model'
 import { history, undoDepth, redoDepth } from 'prosemirror-history'
+import { columnResizing, tableEditing } from 'prosemirror-tables'
 import { schema } from './schema'
 import { editorKeymap, baseKeymapPlugin } from './commands'
 import { docToBlocks } from './pmdocx'
@@ -65,7 +66,7 @@ export function Editor({ apiRef, onState }: { apiRef: MutableRefObject<EditorApi
   useEffect(() => {
     const doc = schema.node('doc', null, [schema.node('paragraph')])
     const view = new EditorView(host.current!, {
-      state: EditorState.create({ doc, plugins: [history(), editorKeymap(), baseKeymapPlugin()] }),
+      state: EditorState.create({ doc, plugins: [columnResizing(), tableEditing(), history(), editorKeymap(), baseKeymapPlugin()] }),
       dispatchTransaction(tr) {
         const next = view.state.apply(tr)
         view.updateState(next)

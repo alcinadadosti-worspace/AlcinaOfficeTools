@@ -3,8 +3,9 @@ import { keymap } from 'prosemirror-keymap'
 import { baseKeymap, toggleMark, setBlockType, wrapIn, chainCommands, exitCode } from 'prosemirror-commands'
 import { undo, redo } from 'prosemirror-history'
 import { splitListItem, liftListItem, sinkListItem, wrapInList } from 'prosemirror-schema-list'
+import { addRowAfter, addColumnAfter, deleteRow, deleteColumn, deleteTable, mergeCells, splitCell, goToNextCell } from 'prosemirror-tables'
 import type { Command, Plugin } from 'prosemirror-state'
-import type { MarkType } from 'prosemirror-model'
+import type { MarkType, Node as ProseMirrorNode } from 'prosemirror-model'
 import { schema } from './schema'
 
 const li = schema.nodes.list_item
@@ -21,6 +22,20 @@ export const insertImage = (src: string, alt = ''): Command => (state, dispatch)
   if (dispatch) dispatch(state.tr.replaceSelectionWith(node).scrollIntoView())
   return true
 }
+
+/** Insere uma tabela rows x cols (primeira linha como cabeçalho). */
+export const insertTable = (rows = 3, cols = 3): Command => (state, dispatch) => {
+  const { table: tbl, table_row, table_cell, table_header } = schema.nodes
+  const cell = (header: boolean): ProseMirrorNode => (header ? table_header : table_cell).createAndFill()!
+  const row = (header: boolean): ProseMirrorNode => table_row.create(null, Array.from({ length: cols }, () => cell(header)))
+  const body: ProseMirrorNode[] = [row(true)]
+  for (let i = 1; i < rows; i++) body.push(row(false))
+  if (dispatch) dispatch(state.tr.replaceSelectionWith(tbl.create(null, body)).scrollIntoView())
+  return true
+}
+
+/** Operações de tabela (prosemirror-tables). */
+export const table = { addRowAfter, addColumnAfter, deleteRow, deleteColumn, deleteTable, mergeCells, splitCell }
 
 /** Define (ou remove) uma marca com atributos sobre a seleção. */
 function applyMark(type: MarkType, attrs: Record<string, unknown> | null): Command {
@@ -122,8 +137,8 @@ export function editorKeymap(): Plugin {
     'Mod-y': redo,
     'Mod-Shift-z': redo,
     Enter: splitListItem(li),
-    Tab: sinkListItem(li),
-    'Shift-Tab': liftListItem(li),
+    Tab: chainCommands(goToNextCell(1), sinkListItem(li)),
+    'Shift-Tab': chainCommands(goToNextCell(-1), liftListItem(li)),
     'Shift-Enter': chainCommands(exitCode, (state, dispatch) => {
       if (dispatch) dispatch(state.tr.replaceSelectionWith(schema.nodes.hard_break.create()).scrollIntoView())
       return true

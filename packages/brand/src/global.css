@@ -94,3 +94,11 @@ body {
     opacity: 1;
   }
 }
+
+/* Tabelas do editor (prosemirror-tables) */
+.ProseMirror table { border-collapse: collapse; margin: 10px 0; table-layout: fixed; width: auto; }
+.ProseMirror td, .ProseMirror th { border: 1px solid #c9d4cd; padding: 5px 8px; vertical-align: top; box-sizing: border-box; position: relative; min-width: 48px; }
+.ProseMirror th { background: #eef4f0; font-weight: 600; text-align: left; }
+.ProseMirror .selectedCell { background: rgba(15,122,52,0.14); }
+.ProseMirror .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: var(--ao-green, #0f7a34); pointer-events: none; z-index: 20; }
+.ProseMirror.resize-cursor { cursor: col-resize; }
