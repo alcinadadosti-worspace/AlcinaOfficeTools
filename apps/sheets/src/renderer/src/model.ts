@@ -77,6 +77,8 @@ export interface SheetDoc {
   charts: ChartObj[]
   condFormats: CondRule[]
   validations: Validation[]
+  /** Comentários/notas por célula (chave "linha,coluna"). */
+  comments: Record<string, string>
 }
 
 export interface SavedSheet {
@@ -87,6 +89,7 @@ export interface SavedSheet {
   charts?: ChartObj[]
   condFormats?: CondRule[]
   validations?: Validation[]
+  comments?: Record<string, string>
 }
 
 export interface SavedWorkbook {
@@ -100,11 +103,11 @@ export function cellKey(row: number, col: number): string {
 }
 
 export function newSheet(name: string): SheetDoc {
-  return { name, engine: new SheetEngine(), styles: {}, merges: [], charts: [], condFormats: [], validations: [] }
+  return { name, engine: new SheetEngine(), styles: {}, merges: [], charts: [], condFormats: [], validations: [], comments: {} }
 }
 
 export function serialize(sheets: SheetDoc[]): SavedWorkbook {
-  return { version: 1, app: 'alcina-sheets', sheets: sheets.map((s) => ({ name: s.name, cells: s.engine.entries(), styles: s.styles, merges: s.merges, charts: s.charts, condFormats: s.condFormats, validations: s.validations })) }
+  return { version: 1, app: 'alcina-sheets', sheets: sheets.map((s) => ({ name: s.name, cells: s.engine.entries(), styles: s.styles, merges: s.merges, charts: s.charts, condFormats: s.condFormats, validations: s.validations, comments: s.comments })) }
 }
 
 export function deserialize(data: SavedWorkbook): SheetDoc[] {
@@ -112,7 +115,7 @@ export function deserialize(data: SavedWorkbook): SheetDoc[] {
   const out = (data.sheets ?? []).map((s) => {
     const e = new SheetEngine()
     e.load(s.cells ?? [])
-    return { name: s.name, engine: e, styles: s.styles ?? {}, merges: s.merges ?? [], charts: s.charts ?? [], condFormats: s.condFormats ?? [], validations: s.validations ?? [] }
+    return { name: s.name, engine: e, styles: s.styles ?? {}, merges: s.merges ?? [], charts: s.charts ?? [], condFormats: s.condFormats ?? [], validations: s.validations ?? [], comments: s.comments ?? {} }
   })
   return out.length ? out : [newSheet('Planilha1')]
 }

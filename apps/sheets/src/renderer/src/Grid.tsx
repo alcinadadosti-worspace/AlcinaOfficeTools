@@ -29,6 +29,7 @@ export interface GridProps {
   condFormats?: CondRule[]
   hiddenRows?: Set<number>
   validations?: Validation[]
+  comments?: Record<string, string>
   onSetValue?: (r: number, c: number, text: string) => void
   onFill?: (r: number, c: number) => void
   sel: Sel
@@ -50,6 +51,7 @@ export function Grid(props: GridProps): ReactNode {
   const condFormats = props.condFormats ?? []
   const hiddenRows = props.hiddenRows
   const validations = props.validations ?? []
+  const comments = props.comments
   const selRef = useRef(sel)
   selRef.current = sel
   const dragging = useRef(false)
@@ -326,6 +328,12 @@ export function Grid(props: GridProps): ReactNode {
                     <span style={{ color: '#b64a38', fontWeight: 600 }} title="O intervalo de derramamento não está vazio.">#DERRAM!</span>
                   ) : (
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatCell(dv, st)}</span>
+                  )}
+                  {comments?.[key] && (
+                    <span
+                      title={comments[key]}
+                      style={{ position: 'absolute', top: 0, right: 0, width: 0, height: 0, borderTop: '7px solid #d14343', borderLeft: '7px solid transparent' }}
+                    />
                   )}
                   {active && editing === null && val && (
                     <Menu>

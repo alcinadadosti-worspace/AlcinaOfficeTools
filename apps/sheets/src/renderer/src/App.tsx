@@ -27,6 +27,8 @@ import {
   ArrowDownload24Regular,
   DocumentTable24Regular,
   Calculator24Regular,
+  Comment24Regular,
+  CommentAdd24Regular,
   Add16Regular
 } from '@fluentui/react-icons'
 import { AppShell, type RibbonTab } from '@alcina/ui-shell'
@@ -78,6 +80,7 @@ export function App(): ReactNode {
   const [filterDlg, setFilterDlg] = useState<{ col: number; values: string[]; checked: Record<string, boolean> } | null>(null)
   const [valDlg, setValDlg] = useState<{ open: boolean; list: string }>({ open: false, list: '' })
   const [pivot, setPivot] = useState<{ open: boolean; headers: { idx: number; name: string }[]; rowField: number; colField: number; valField: number; agg: Agg } | null>(null)
+  const [cmt, setCmt] = useState<{ open: boolean; text: string } | null>(null)
 
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
@@ -269,6 +272,30 @@ export function App(): ReactNode {
     setSelState({ ar: 0, ac: 0, fr: 0, fc: 0 })
     setPivot(null)
     setNotice(`Tabela dinâmica criada em "${doc.name}" (${rowKeys.length} linha(s)${cfg.colField !== null ? ` × ${colKeys.length} coluna(s)` : ''}).`)
+  }
+
+  // Comentários/notas em célula.
+  const comments = sheet.comments ?? {}
+  const activeComment = comments[cellKey(sel.ar, sel.ac)]
+  const openComment = (): void => setCmt({ open: true, text: activeComment ?? '' })
+  const applyComment = (): void => {
+    if (!cmt) return
+    const key = cellKey(sel.ar, sel.ac)
+    const text = cmt.text.trim()
+    setSheets((arr) =>
+      arr.map((sh, i) => {
+        if (i !== idx) return sh
+        const next = { ...(sh.comments ?? {}) }
+        if (text) next[key] = text
+        else delete next[key]
+        return { ...sh, comments: next }
+      })
+    )
+    setCmt(null)
+  }
+  const deleteComment = (): void => {
+    const key = cellKey(sel.ar, sel.ac)
+    setSheets((arr) => arr.map((sh, i) => (i === idx ? { ...sh, comments: Object.fromEntries(Object.entries(sh.comments ?? {}).filter(([k]) => k !== key)) } : sh)))
   }
 
   const selStats = ((): { count: number; sum: number; nonEmpty: number } => {
@@ -636,6 +663,19 @@ export function App(): ReactNode {
           ]
         }
       ]
+    },
+    {
+      key: 'review',
+      label: 'Revisão',
+      groups: [
+        {
+          label: 'Comentários',
+          items: [
+            { key: 'newcmt', label: activeComment ? 'Editar comentário' : 'Novo comentário', icon: <CommentAdd24Regular />, onClick: openComment },
+            { key: 'delcmt', label: 'Excluir comentário', icon: <Comment24Regular />, disabled: !activeComment, onClick: deleteComment }
+          ]
+        }
+      ]
     }
   ]
 
@@ -666,7 +706,7 @@ export function App(): ReactNode {
         </div>
 
         <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-          <Grid engine={engine} styles={styles} merges={merges} condFormats={condFormats} hiddenRows={hiddenRows} validations={validations} onSetValue={onSetCellValue} onFill={onFill} rows={ROWS} cols={COLS} rev={rev} freezeR={freeze.r} freezeC={freeze.c} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
+          <Grid engine={engine} styles={styles} merges={merges} condFormats={condFormats} hiddenRows={hiddenRows} validations={validations} comments={comments} onSetValue={onSetCellValue} onFill={onFill} rows={ROWS} cols={COLS} rev={rev} freezeR={freeze.r} freezeC={freeze.c} sel={sel} editing={editing} setSel={setSel} onStartEdit={(init) => setEditing(init)} onEditChange={(t) => setEditing(t)} onCommit={onCommit} onCancel={() => { setEditing(null); bump() }} onClear={clearContent} onCopy={onCopy} onPaste={onPaste} />
           <ChartLayer charts={charts} engine={engine} rev={rev} selId={selChart} onSelect={setSelChart} onChange={updateChart} onDelete={deleteChart} />
         </div>
 
@@ -836,6 +876,28 @@ export function App(): ReactNode {
             <DialogActions>
               <Button onClick={() => setPivot(null)}>Cancelar</Button>
               <Button appearance="primary" onClick={applyPivot}>Criar</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      <Dialog open={!!cmt?.open} onOpenChange={(_, d) => !d.open && setCmt(null)}>
+        <DialogSurface style={{ maxWidth: 420 }}>
+          <DialogBody>
+            <DialogTitle>Comentário em {colToLetter(sel.ac)}{sel.ar + 1}</DialogTitle>
+            <DialogContent>
+              <textarea
+                autoFocus
+                value={cmt?.text ?? ''}
+                onChange={(e) => setCmt((c) => (c ? { ...c, text: e.target.value } : c))}
+                placeholder="Escreva uma nota para esta célula…"
+                style={{ width: '100%', height: 110, resize: 'vertical', border: '1px solid var(--ao-border)', borderRadius: 6, padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--ao-bg)', color: 'var(--ao-text)' }}
+              />
+              <div style={{ fontSize: 12, color: 'var(--ao-text-3)', marginTop: 8 }}>A célula ganha um marcador vermelho no canto; passe o mouse para ler. Deixe vazio para remover.</div>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setCmt(null)}>Cancelar</Button>
+              <Button appearance="primary" onClick={applyComment}>Salvar</Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>
