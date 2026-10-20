@@ -1,9 +1,10 @@
 // Central Alcina Office: ponto de entrada da suíte (Fase 1).
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { SheetsGlyph, DocsGlyph, PointGlyph, NotesGlyph, BiGlyph, appColors } from '@alcina/brand'
 import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
+import './hub.css'
 
 interface SuiteApp {
   key: string
@@ -22,6 +23,51 @@ const APPS: SuiteApp[] = [
   { key: 'notes', name: 'AlcinaNotes', short: 'Notes', desc: 'Anotações', glyph: <NotesGlyph size={40} />, color: appColors.notes, ready: true },
   { key: 'bi', name: 'AlcinaBi', short: 'BI', desc: 'Relatórios e BI', glyph: <BiGlyph size={40} />, color: appColors.bi, ready: true }
 ]
+
+// Cartão com brilho que segue o cursor e leve inclinação 3D (atualiza variáveis CSS via ref).
+function SuiteCard({ app, index, onLaunch }: { app: SuiteApp; index: number; onLaunch: (a: SuiteApp) => void }): ReactNode {
+  const ref = useRef<HTMLButtonElement>(null)
+  const onMove = (e: React.MouseEvent): void => {
+    const el = ref.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const px = (e.clientX - r.left) / r.width
+    const py = (e.clientY - r.top) / r.height
+    el.style.setProperty('--mx', `${px * 100}%`)
+    el.style.setProperty('--my', `${py * 100}%`)
+    el.style.setProperty('--rx', `${(0.5 - py) * 7}deg`)
+    el.style.setProperty('--ry', `${(px - 0.5) * 7}deg`)
+  }
+  const reset = (): void => {
+    const el = ref.current
+    if (!el) return
+    el.style.setProperty('--rx', '0deg')
+    el.style.setProperty('--ry', '0deg')
+  }
+  return (
+    <button
+      ref={ref}
+      className="ao-hub-card ao-rise"
+      style={{ '--accent': app.color, animationDelay: `${0.2 + index * 0.08}s` } as CSSProperties}
+      onMouseMove={onMove}
+      onMouseLeave={reset}
+      onClick={() => onLaunch(app)}
+    >
+      <span className="ao-hub-spot" />
+      <span className="ao-hub-ico" style={{ color: app.color }}>
+        {app.glyph}
+      </span>
+      <span className="ao-hub-meta">
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--ao-text)' }}>{app.name}</span>
+          {!app.ready && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ao-gold-text)', background: 'var(--ao-green-soft)', border: '1px solid var(--ao-border)', borderRadius: 100, padding: '1px 7px' }}>EM BREVE</span>}
+        </span>
+        <span style={{ display: 'block', fontSize: 13, color: 'var(--ao-text-2)', marginTop: 2 }}>{app.desc}</span>
+      </span>
+      <span className="ao-hub-arrow" aria-hidden>→</span>
+    </button>
+  )
+}
 
 export function App(): ReactNode {
   const [version, setVersion] = useState('')
@@ -62,55 +108,32 @@ export function App(): ReactNode {
       ribbon={ribbon}
       update={{ status, onInstall: () => void getUpdater()?.install() }}
     >
-      <div style={{ padding: '28px 32px', maxWidth: 1000, margin: '0 auto' }}>
-        <div style={{ fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ao-gold-text)', fontWeight: 600 }}>Alcina Dados TI</div>
-        <h1 style={{ fontSize: 30, margin: '6px 0 4px', color: 'var(--ao-text)' }}>Bem-vindo à Alcina Office</h1>
-        <p style={{ color: 'var(--ao-text-2)', fontSize: 15, maxWidth: 620, marginTop: 0 }}>
-          Sua suíte de produtividade. Escolha um aplicativo para começar — todos compartilham a mesma identidade, o mesmo motor e atualização automática.
-        </p>
+      <div className="ao-hub">
+        <div className="ao-hub-aurora" aria-hidden />
+        <div className="ao-hub-inner" style={{ padding: '28px 32px', maxWidth: 1000, margin: '0 auto' }}>
+          <div className="ao-rise" style={{ fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ao-gold-text)', fontWeight: 600 }}>Alcina Dados TI</div>
+          <h1 className="ao-hub-title ao-rise" style={{ animationDelay: '0.05s' }}>Bem-vindo à Alcina Office</h1>
+          <p className="ao-rise" style={{ color: 'var(--ao-text-2)', fontSize: 15, maxWidth: 620, marginTop: 0, animationDelay: '0.1s' }}>
+            Sua suíte de produtividade. Escolha um aplicativo para começar — todos compartilham a mesma identidade, o mesmo motor e atualização automática.
+          </p>
 
-        {notice && (
-          <div
-            className="ao-fade-in"
-            style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18, padding: '12px 16px', background: 'var(--ao-green-soft)', border: '1px solid var(--ao-border)', borderRadius: 8, color: 'var(--ao-text)', fontSize: 14 }}
-          >
-            <span style={{ flex: 1 }}>{notice}</span>
-            <button onClick={() => setNotice(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ao-text-2)', fontSize: 18, lineHeight: 1 }} aria-label="Fechar">
-              ×
-            </button>
-          </div>
-        )}
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 300px))', justifyContent: 'center', gap: 14, marginTop: 24 }}>
-          {APPS.map((a) => (
-            <button
-              key={a.key}
-              onClick={() => launch(a)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                padding: 18,
-                border: '1px solid var(--ao-border)',
-                borderRadius: 10,
-                background: 'var(--ao-bg)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                boxShadow: 'var(--ao-shadow)'
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = a.color)}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--ao-border)')}
+          {notice && (
+            <div
+              className="ao-fade-in"
+              style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18, padding: '12px 16px', background: 'var(--ao-green-soft)', border: '1px solid var(--ao-border)', borderRadius: 8, color: 'var(--ao-text)', fontSize: 14 }}
             >
-              <span style={{ color: a.color, display: 'flex', flex: 'none' }}>{a.glyph}</span>
-              <span style={{ minWidth: 0 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--ao-text)' }}>{a.name}</span>
-                  {!a.ready && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ao-gold-text)', background: 'var(--ao-green-soft)', border: '1px solid var(--ao-border)', borderRadius: 100, padding: '1px 7px' }}>EM BREVE</span>}
-                </span>
-                <span style={{ display: 'block', fontSize: 13, color: 'var(--ao-text-2)', marginTop: 2 }}>{a.desc}</span>
-              </span>
-            </button>
-          ))}
+              <span style={{ flex: 1 }}>{notice}</span>
+              <button onClick={() => setNotice(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ao-text-2)', fontSize: 18, lineHeight: 1 }} aria-label="Fechar">
+                ×
+              </button>
+            </div>
+          )}
+
+          <div className="ao-hub-grid">
+            {APPS.map((a, i) => (
+              <SuiteCard key={a.key} app={a} index={i} onLaunch={launch} />
+            ))}
+          </div>
         </div>
       </div>
     </AppShell>

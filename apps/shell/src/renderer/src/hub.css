@@ -1,0 +1,157 @@
+/* Central Alcina Office — animações do hub (estilo "ReactBits", implementação própria em CSS). */
+
+.ao-hub {
+  position: relative;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+/* --- Fundo aurora: blobs suaves em movimento (verde/dourado da marca) --- */
+.ao-hub-aurora {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 140%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(60px);
+  opacity: 0.55;
+}
+.ao-hub-aurora::before,
+.ao-hub-aurora::after {
+  content: '';
+  position: absolute;
+  width: 46vw;
+  height: 46vw;
+  max-width: 560px;
+  max-height: 560px;
+  border-radius: 50%;
+}
+.ao-hub-aurora::before {
+  left: 2%;
+  top: -6%;
+  background: radial-gradient(circle, rgba(15, 122, 52, 0.55), transparent 62%);
+  animation: ao-aurora-a 18s ease-in-out infinite;
+}
+.ao-hub-aurora::after {
+  right: 4%;
+  top: 2%;
+  background: radial-gradient(circle, rgba(199, 154, 42, 0.5), transparent 62%);
+  animation: ao-aurora-b 22s ease-in-out infinite;
+}
+@keyframes ao-aurora-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(14vw, 8vh) scale(1.18); }
+}
+@keyframes ao-aurora-b {
+  0%, 100% { transform: translate(0, 0) scale(1.1); }
+  50% { transform: translate(-12vw, 6vh) scale(0.9); }
+}
+
+.ao-hub-inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Entrada: desfoque + subida com escalonamento (Blur/Animated Content) --- */
+.ao-rise {
+  animation: ao-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes ao-rise {
+  from { opacity: 0; transform: translateY(16px); filter: blur(8px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+/* --- Título com gradiente animado (Shiny/Gradient Text) --- */
+.ao-hub-title {
+  font-size: 32px;
+  margin: 6px 0 4px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  background: linear-gradient(100deg, var(--ao-green) 0%, var(--ao-gold) 28%, var(--ao-green-strong) 55%, var(--ao-gold) 80%, var(--ao-green) 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ao-shine 6s linear infinite;
+}
+@keyframes ao-shine {
+  to { background-position: 220% center; }
+}
+
+/* --- Cartões com spotlight + inclinação 3D (Spotlight Card / Tilt) --- */
+.ao-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 300px));
+  justify-content: center;
+  gap: 16px;
+  margin-top: 26px;
+}
+.ao-hub-card {
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
+  --my: 0%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--ao-border);
+  border-radius: 12px;
+  background: var(--ao-bg);
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  box-shadow: var(--ao-shadow);
+  transform: perspective(760px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 0.18s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+  will-change: transform;
+}
+.ao-hub-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 10px 30px -12px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.ao-hub-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* brilho que segue o cursor */
+.ao-hub-spot {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(260px circle at var(--mx) var(--my), color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.ao-hub-card:hover .ao-hub-spot { opacity: 1; }
+
+.ao-hub-ico {
+  display: flex;
+  flex: none;
+  transition: transform 0.25s ease;
+}
+.ao-hub-card:hover .ao-hub-ico { transform: scale(1.08) translateY(-1px); }
+
+.ao-hub-meta { min-width: 0; flex: 1; }
+.ao-hub-arrow {
+  flex: none;
+  font-size: 18px;
+  color: var(--accent);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.ao-hub-card:hover .ao-hub-arrow { opacity: 1; transform: translateX(0); }
+
+/* --- glyph flutuante suave no topo --- */
+.ao-hub-float { animation: ao-float 5s ease-in-out infinite; }
+@keyframes ao-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ao-rise, .ao-hub-title, .ao-hub-aurora::before, .ao-hub-aurora::after, .ao-hub-float { animation: none; }
+  .ao-hub-card { transform: none; }
+}
