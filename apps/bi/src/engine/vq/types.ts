@@ -66,7 +66,7 @@ export type RelativeUnit = 'day' | 'week' | 'month' | 'quarter' | 'year'
 
 export type VQFilter =
   | { kind: 'in'; field: FieldRef; values: JsonScalar[]; not?: boolean }
-  | { kind: 'tuple'; fields: FieldRef[]; tuples: JsonScalar[][] }
+  | { kind: 'tuple'; fields: FieldRef[]; tuples: JsonScalar[][]; not?: boolean }
   | { kind: 'advanced'; field: FieldRef; logic: 'and' | 'or'; conditions: { op: AdvancedOp; value?: JsonScalar }[] }
   | { kind: 'range'; field: FieldRef; min?: JsonScalar; max?: JsonScalar }
   | {

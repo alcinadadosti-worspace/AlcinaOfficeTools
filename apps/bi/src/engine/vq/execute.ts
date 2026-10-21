@@ -208,8 +208,39 @@ export class VisualQueryEngine {
       case 'tuple': {
         const cols = vf.fields.map((f) => this.resolveColumn(f))
         const tuples = vf.tuples.map((t) => t.map((v) => normKey(fromJsonScalar(v))))
-        if (cols.length === 1) return ValuesFilter.single(cols[0], tuples.map((t) => t[0]))
-        return new ValuesFilter(cols, tuples)
+        if (!vf.not) {
+          if (cols.length === 1) return ValuesFilter.single(cols[0], tuples.map((t) => t[0]))
+          return new ValuesFilter(cols, tuples)
+        }
+        // Exclusão de tupla: NOT(c1=v1 AND c2=v2 ...). Como os filtros se combinam por E, montamos
+        // um filtro POSITIVO com as combinações distintas presentes, menos as excluídas (projeta/propaga certo).
+        if (cols.length === 1) {
+          const ex = new Set(tuples.map((t) => t[0]))
+          return this.valueFilter(cols[0], (v) => !ex.has(normKey(v)))
+        }
+        const excluded = new Set(tuples.map((t) => t.join('\u0000')))
+        const distincts = cols.map((c) => this.ev.distinctValues(c, fc, true).data[0].map((v) => normKey(v)))
+        let total = 1
+        for (const d of distincts) total *= d.length || 1
+        if (total === 0 || total > 500000) {
+          // Cardinalidade altíssima (raro): exclui ao menos pela 1ª coluna, evitando explosão de memória.
+          const ex0 = new Set(tuples.map((t) => t[0]))
+          return this.valueFilter(cols[0], (v) => !ex0.has(normKey(v)))
+        }
+        const keep: NormKey[][] = []
+        const build = (i: number, acc: NormKey[]): void => {
+          if (i === distincts.length) {
+            if (!excluded.has(acc.join('\u0000'))) keep.push(acc.slice())
+            return
+          }
+          for (const v of distincts[i]) {
+            acc.push(v)
+            build(i + 1, acc)
+            acc.pop()
+          }
+        }
+        build(0, [])
+        return new ValuesFilter(cols, keep)
       }
       case 'advanced': {
         const col = this.resolveColumn(vf.field)

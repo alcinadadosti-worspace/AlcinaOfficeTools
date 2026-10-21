@@ -442,9 +442,8 @@ export function includeExclude(pageId: string, visualId: string, point: PointInf
     if (f.kind === 'in') {
       v.filters.push({ id: uid('flt'), field: f.field as Draft<FieldRef>, type: 'basic', values: f.values as never[], invert: exclude })
     } else if (f.kind === 'tuple') {
-      f.fields.forEach((field, i) => {
-        v.filters.push({ id: uid('flt'), field: field as Draft<FieldRef>, type: 'basic', values: [f.tuples[0][i]] as never[], invert: exclude })
-      })
+      // Uma única tupla (ex.: categoria + série): incluir = a combinação; excluir = NOT(a combinação).
+      v.filters.push({ id: uid('flt'), type: 'basic', field: f.fields[0] as Draft<FieldRef>, fields: f.fields as never, tuples: [f.tuples[0]] as never, values: [] as never[], invert: exclude })
     }
   })
   clearSelection(pageId)

@@ -109,4 +109,20 @@ describe('consultas de visuais', () => {
     })
     expect(r2.rows).toEqual([[300 + 200 + 500 + 150 + 150]])
   })
+
+  it('exclui um único ponto (categoria+série) sem apagar a categoria nem a série', () => {
+    const fields = [
+      { table: 'Produto', column: 'Categoria' },
+      { table: 'Produto', column: 'Cor' }
+    ]
+    const r = vq.execute({
+      groupBy: [{ table: 'Produto', column: 'Categoria' }],
+      values: [M('Total Vendas')],
+      filters: [{ kind: 'tuple', fields, tuples: [['Esporte', 'Vermelho']], not: true }]
+    })
+    // Esporte perde apenas o Vermelho (3000), caindo de 3570 para 570; a categoria continua presente.
+    expect(r.rows.find((x) => x[0] === 'Esporte')?.[1]).toBe(570)
+    // Roupas (que também tem Vermelho = 700) permanece intacto em 850 — NÃO foi excluído junto.
+    expect(r.rows.find((x) => x[0] === 'Roupas')?.[1]).toBe(850)
+  })
 })

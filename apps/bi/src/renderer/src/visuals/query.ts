@@ -18,6 +18,10 @@ export function filterToVQ(f: FilterDef): VQFilter | null {
   }
   switch (f.type) {
     case 'basic':
+      // Ponto com legenda (multi-campo): uma única tupla, incluída ou excluída (NOT) como um todo.
+      if (f.fields && f.fields.length > 1 && f.tuples && f.tuples.length) {
+        return { kind: 'tuple', fields: f.fields, tuples: f.tuples, not: f.invert || undefined }
+      }
       if (f.invert) return f.values && f.values.length ? { kind: 'in', field: f.field, values: f.values, not: true } : null
       return f.values && f.values.length ? { kind: 'in', field: f.field, values: f.values } : null
     case 'advanced': {

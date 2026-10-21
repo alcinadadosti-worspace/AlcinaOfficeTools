@@ -45,6 +45,9 @@ export interface FilterDef {
   values?: JsonScalar[]
   /** Básico: "selecionar tudo" com exceções (values = exceções). */
   invert?: boolean
+  /** Incluir/excluir um ponto com legenda: campos (≥2) e a tupla de valores. */
+  fields?: FieldRef[]
+  tuples?: JsonScalar[][]
   /** Avançado */
   logic?: 'and' | 'or'
   conditions?: { op: AdvancedOp; value?: JsonScalar }[]
