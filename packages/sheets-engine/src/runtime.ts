@@ -44,7 +44,11 @@ export function scalar(a: ArgValue): CellValue {
 export function parseNumber(s: string): number | null {
   let t = s.trim().replace(/\s/g, '')
   if (!t) return null
-  if (/,/.test(t)) t = t.replace(/\./g, '').replace(',', '.')
+  if (/,/.test(t)) {
+    t = t.replace(/\./g, '').replace(',', '.') // pt-BR: ponto = separador de milhar, vírgula = decimal
+  } else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) {
+    t = t.replace(/\./g, '') // só pontos agrupando milhares, ex.: 1.000 ou 1.000.000 (sem decimal)
+  }
   const n = Number(t)
   return Number.isFinite(n) ? n : null
 }

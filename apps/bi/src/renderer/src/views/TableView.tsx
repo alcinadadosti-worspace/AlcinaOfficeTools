@@ -1,5 +1,5 @@
 // Exibição de tabela: grade completa de uma tabela do modelo (com ordenação).
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowSortDownLines16Regular, Table16Regular } from '@fluentui/react-icons'
 import type { DataType } from '@engine/data/types'
 import type { JsonScalar } from '@engine/query/types'
@@ -38,6 +38,11 @@ export function TableView() {
   const [rowCount, setRowCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
+  // Identidade da consulta atual: respostas de páginas antigas (tabela/ordenação/modelo diferentes) são descartadas.
+  const reqKey = `${active}|${sort?.column ?? ''}|${sort?.desc ?? ''}|${modelVersion}`
+  const keyRef = useRef(reqKey)
+  keyRef.current = reqKey
+
   // Carrega a primeira página quando muda a tabela, a ordenação ou o modelo.
   useEffect(() => {
     if (!active) {
@@ -66,7 +71,9 @@ export function TableView() {
 
   const loadMore = (from: number) => {
     if (!active || from >= rowCount) return
+    const at = keyRef.current
     void enqueue(() => engine.tableData(active, from, PAGE, sort)).then((res) => {
+      if (keyRef.current !== at) return // tabela/ordenação/modelo mudaram: descarta a resposta obsoleta
       setRows((prev) => (prev.length === from ? [...prev, ...res.rows.map((r) => r.map((v, i) => toCell(v, res.columns[i])))] : prev))
     })
   }

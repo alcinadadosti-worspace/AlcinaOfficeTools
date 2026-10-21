@@ -137,7 +137,15 @@ export function parseFormula(src: string): Node {
   const parsePrimary = (): Node => {
     const t = next()
     if (!t) throw new Error('Fim inesperado da fórmula.')
-    if (t.kind === 'num') return { type: 'num', value: t.num! }
+    if (t.kind === 'num') {
+      // Intervalo de linha inteira: 5:5, 1:10 (o tokenizador já consumiu o número).
+      if (peek()?.kind === 'colon' && toks[p + 1]?.kind === 'num') {
+        next()
+        const t2 = next()!
+        return { type: 'range', from: String(t.num), to: String(t2.num) }
+      }
+      return { type: 'num', value: t.num! }
+    }
     if (t.kind === 'str') return { type: 'str', value: t.text! }
     if (t.kind === 'lparen') {
       const e = parseExpr(0)

@@ -429,9 +429,17 @@ export function cartesianOption(input: ChartInput): ChartBuild {
           for (const d of seriesDefs) if (d.hl && d.hl[ci] !== null) rows.push({ color: undefined as unknown as string, name: `${d.name} (destacado)`, value: formatValue(d.hl[ci], d.format) })
         }
         for (const tv of tooltipValues) {
-          const ri = p.rowIndex.get(`${ci}|0`)
-          if (ri === undefined) continue
-          rows.push({ color: undefined as unknown as string, name: r.columns[nG + tv.i].name, value: formatValue(r.rows[ri][nG + tv.i], r.columns[nG + tv.i].format) })
+          const col = r.columns[nG + tv.i]
+          const seen = new Set<number>()
+          for (const d of seriesDefs) {
+            if (d.values[ci] === null) continue
+            const spos = d.si >= 0 ? d.si : 0
+            if (seen.has(spos)) continue
+            seen.add(spos)
+            const ri = p.rowIndex.get(`${ci}|${spos}`)
+            if (ri === undefined) continue
+            rows.push({ color: undefined as unknown as string, name: p.series.length ? `${col.name} · ${d.name}` : col.name, value: formatValue(r.rows[ri][nG + tv.i], col.format) })
+          }
         }
         return tooltipRows(rows, p.catField ? p.categories[ci]?.label : undefined)
       }

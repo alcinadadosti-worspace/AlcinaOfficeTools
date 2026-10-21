@@ -34,6 +34,16 @@ export function parseA1(ref: string): RefAddr | null {
   return { col: letterToCol(m[2]), row: parseInt(m[4], 10) - 1, absCol: m[1] === '$', absRow: m[3] === '$' }
 }
 
+/** Extremo de intervalo: célula ("A1"), coluna inteira ("A") ou linha inteira ("5"). */
+export function parseEndpoint(ref: string): { row: number | null; col: number | null } | null {
+  const m = /^(\$?)([A-Za-z]*)(\$?)(\d*)$/.exec(ref.trim())
+  if (!m) return null
+  const hasCol = m[2].length > 0
+  const hasRow = m[4].length > 0
+  if (!hasCol && !hasRow) return null
+  return { col: hasCol ? letterToCol(m[2]) : null, row: hasRow ? parseInt(m[4], 10) - 1 : null }
+}
+
 export function cellKey(row: number, col: number): string {
   return `${row},${col}`
 }

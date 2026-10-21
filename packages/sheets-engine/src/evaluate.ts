@@ -1,7 +1,7 @@
 // Motor de cálculo: guarda o conteúdo bruto das células e avalia sob demanda,
 // com memoização por recálculo e detecção de referência circular.
 import { parseFormula, type Node } from './parser'
-import { parseA1, cellKey, parseKey } from './a1'
+import { parseA1, parseEndpoint, cellKey, parseKey } from './a1'
 import { type CellValue, type CellError, isError, err } from './types'
 import { FUNCTIONS } from './functions'
 import { toNumber, toText, parseNumber, isMatrix, type ArgValue, type Matrix } from './runtime'
@@ -297,10 +297,19 @@ export class SheetEngine {
   }
 
   private rangeMatrix(from: string, to: string): Matrix {
-    const a = parseA1(from)
-    const b = parseA1(to)
+    const a = parseEndpoint(from)
+    const b = parseEndpoint(to)
     if (!a || !b) return { kind: 'matrix', rows: 1, cols: 1, cells: [[err('#REF!')]] }
-    return this.matrixAt(Math.min(a.row, b.row), Math.min(a.col, b.col), Math.max(a.row, b.row), Math.max(a.col, b.col))
+    // Coluna inteira (A:A) ou linha inteira (1:1): recorta a dimensão aberta ao intervalo usado.
+    const maxR = Math.max(this.rows - 1, 0)
+    const maxC = Math.max(this.cols - 1, 0)
+    const haveCols = a.col !== null && b.col !== null
+    const haveRows = a.row !== null && b.row !== null
+    const c1 = haveCols ? Math.min(a.col!, b.col!) : 0
+    const c2 = haveCols ? Math.max(a.col!, b.col!) : maxC
+    const r1 = haveRows ? Math.min(a.row!, b.row!) : 0
+    const r2 = haveRows ? Math.max(a.row!, b.row!) : maxR
+    return this.matrixAt(r1, c1, r2, c2)
   }
 
   private matrixAt(r1: number, c1: number, r2: number, c2: number): Matrix {
