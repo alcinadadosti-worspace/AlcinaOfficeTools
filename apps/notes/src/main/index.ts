@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { setupAutoUpdates } from '@alcina/updater/main'
 
-const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://alcina-office-updates.onrender.com/notes'
+const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases/download/notes'
 
 interface DialogOpts {
   filters?: FileFilter[]

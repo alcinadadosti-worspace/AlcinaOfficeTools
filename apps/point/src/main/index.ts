@@ -7,7 +7,7 @@ import JSZip from 'jszip'
 import { setupAutoUpdates } from '@alcina/updater/main'
 import { type Deck, type Slide, type SlideElement, type ElementType, SLIDE_W, SLIDE_H, UNITS_PER_INCH as U } from '../shared/deck'
 
-const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://alcina-office-updates.onrender.com/point'
+const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases/download/point'
 
 interface DialogOpts {
   filters?: FileFilter[]

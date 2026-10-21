@@ -27,4 +27,4 @@ linux:
   artifactName: AlcinaOffice-Apresentacoes-${version}-linux-${arch}.${ext}
 publish:
   provider: generic
-  url: https://alcina-office-updates.onrender.com/point
+  url: https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases/download/point

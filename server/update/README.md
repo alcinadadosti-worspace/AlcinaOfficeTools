@@ -2,6 +2,8 @@
 
 Servidor estático mínimo (Node, sem dependências) que serve o **feed de atualização** lido pelos aplicativos (via `electron-updater`, provedor `generic`).
 
+> **Atualização (canal atual):** o auto-update agora é servido pelos **GitHub Releases** do próprio repositório — cada app tem um Release "rolante" (tag = nome do app: `shell`, `sheets`, `docs`, `point`, `notes`, `bi`) atualizado automaticamente pelo workflow `build.yml`. O `publish.url`/feed de cada app aponta para `https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases/download/<app>`. Este servidor Render **não é mais necessário** e fica aqui apenas como alternativa de hospedagem própria (para usar, defina `ALCINA_UPDATE_URL`).
+
 ## Como os apps procuram a atualização
 
 Cada app aponta para `https://<host>/<app>`. O padrão compilado é:

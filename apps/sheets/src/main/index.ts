@@ -4,7 +4,7 @@ import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
 import { setupAutoUpdates } from '@alcina/updater/main'
 
-const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://alcina-office-updates.onrender.com/sheets'
+const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases/download/sheets'
 
 interface DialogOpts {
   filters?: FileFilter[]

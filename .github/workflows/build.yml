@@ -7,6 +7,10 @@ on:
   push:
     tags: ['v*']
 
+# Necessário para o passo que cria/atualiza os Releases (canal de auto-update).
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -41,3 +45,25 @@ jobs:
             apps/${{ matrix.app }}/release/*.deb
             apps/${{ matrix.app }}/release/*.yml
             apps/${{ matrix.app }}/release/*.blockmap
+
+      # Canal de auto-update: envia os instaladores + latest*.yml + .blockmap para um
+      # Release "rolante" por app (tag = nome do app). O electron-updater lê o latest.yml
+      # direto da URL de download do Release. Idempotente (cria se faltar, sobrescreve assets).
+      - name: Publicar no Release de atualização
+        working-directory: apps/${{ matrix.app }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ matrix.app }}"
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" \
+            --title "Alcina Office — $tag (canal de atualização)" \
+            --notes "Assets de auto-update atualizados automaticamente pelo CI. Não editar manualmente." \
+            --latest=false || true
+          shopt -s nullglob
+          files=(release/*.exe release/*.exe.blockmap release/*.yml release/*.AppImage release/*.deb)
+          if [ ${#files[@]} -gt 0 ]; then
+            gh release upload "$tag" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            echo "Nenhum artefato para publicar em $tag"
+          fi

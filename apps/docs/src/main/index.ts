@@ -8,7 +8,7 @@ import { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableRow, TableC
 import { setupAutoUpdates } from '@alcina/updater/main'
 import type { DocBlock, DocRun } from '@alcina/editor/docmodel'
 
-const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://alcina-office-updates.onrender.com/docs'
+const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases/download/docs'
 
 interface DialogOpts {
   filters?: FileFilter[]

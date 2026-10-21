@@ -12,7 +12,7 @@ win:
   target:
     - nsis
     - portable
-  artifactName: ${productName}-${version}-win-${arch}.${ext}
+  artifactName: AlcinaOffice-Central-${version}-win-${arch}.${ext}
 nsis:
   oneClick: false
   perMachine: false
@@ -24,7 +24,7 @@ linux:
     - deb
   category: Office
   maintainer: Alcina Dados TI
-  artifactName: ${productName}-${version}-linux-${arch}.${ext}
+  artifactName: AlcinaOffice-Central-${version}-linux-${arch}.${ext}
 publish:
   provider: generic
-  url: https://alcina-office-updates.onrender.com
+  url: https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases/download/shell

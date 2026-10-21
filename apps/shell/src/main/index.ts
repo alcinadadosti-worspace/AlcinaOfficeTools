@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process'
 import { setupAutoUpdates } from '@alcina/updater/main'
 
 // Feed de atualização (servidor no Render). Pode ser sobrescrito por variável de ambiente.
-const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://alcina-office-updates.onrender.com'
+const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases/download/shell'
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({

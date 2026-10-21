@@ -27,4 +27,4 @@ linux:
   artifactName: AlcinaOffice-Analytics-${version}-linux-${arch}.${ext}
 publish:
   provider: generic
-  url: https://alcina-office-updates.onrender.com/bi
+  url: https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases/download/bi

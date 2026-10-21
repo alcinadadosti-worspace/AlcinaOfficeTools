@@ -8,7 +8,7 @@ import { setupAutoUpdates } from '@alcina/updater/main'
 
 const PROJECT_EXT = '.alcbi'
 const isDev = !app.isPackaged && !!process.env['ELECTRON_RENDERER_URL']
-const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://alcina-office-updates.onrender.com/bi'
+const FEED_URL = process.env['ALCINA_UPDATE_URL'] || 'https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases/download/bi'
 
 interface WindowState {
   initialFile: string | null
