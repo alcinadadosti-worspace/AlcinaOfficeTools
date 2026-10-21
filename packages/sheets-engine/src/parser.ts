@@ -199,8 +199,8 @@ export function parseFormula(src: string): Node {
       const prec = BINPREC[t.text!]
       if (prec < min) break
       next()
-      const nextMin = t.text === '^' ? prec : prec + 1
-      const right = parseExpr(nextMin)
+      // Todos os operadores são associativos à esquerda (inclusive ^, como no Excel: 2^3^2 = 64).
+      const right = parseExpr(prec + 1)
       left = { type: 'binary', op: t.text!, left, right }
     }
     return left

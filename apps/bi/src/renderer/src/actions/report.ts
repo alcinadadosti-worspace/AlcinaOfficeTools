@@ -78,7 +78,9 @@ export function movePage(pageId: string, toIndex: number): void {
     const i = d.report.pages.findIndex((p) => p.id === pageId)
     if (i < 0) return
     const [p] = d.report.pages.splice(i, 1)
-    d.report.pages.splice(Math.max(0, Math.min(toIndex, d.report.pages.length)), 0, p)
+    // Ao remover antes do alvo, o índice de destino recua 1 (senão a página cai um slot além).
+    const dest = i < toIndex ? toIndex - 1 : toIndex
+    d.report.pages.splice(Math.max(0, Math.min(dest, d.report.pages.length)), 0, p)
   })
 }
 

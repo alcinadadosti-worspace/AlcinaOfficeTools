@@ -62,7 +62,7 @@ export function toText(v: CellValue): string {
   if (isError(v)) return v.error
   if (v === null) return ''
   if (typeof v === 'boolean') return v ? 'VERDADEIRO' : 'FALSO'
-  if (typeof v === 'number') return String(v)
+  if (typeof v === 'number') return Number.isFinite(v) ? new Intl.NumberFormat('pt-BR', { useGrouping: false, maximumFractionDigits: 10 }).format(v) : String(v)
   return v
 }
 
@@ -84,7 +84,7 @@ export function displayValue(v: CellValue): string {
   if (typeof v === 'boolean') return v ? 'VERDADEIRO' : 'FALSO'
   if (typeof v === 'number') {
     if (!Number.isFinite(v)) return '#NÚM!'
-    return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 10 }).format(v)
+    return new Intl.NumberFormat('pt-BR', { useGrouping: false, maximumFractionDigits: 10 }).format(v)
   }
   return v
 }

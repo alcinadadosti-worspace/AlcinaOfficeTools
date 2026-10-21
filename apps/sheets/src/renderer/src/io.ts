@@ -40,7 +40,9 @@ export async function importXlsx(): Promise<SheetDoc[] | null> {
   const path = await window.alcinaFiles.openDialog({ filters: XLSXF })
   if (!path) return null
   const bytes = await window.alcinaFiles.read(path)
-  const wb = XLSX.read(bytes, { type: 'array' })
+  const wb = XLSX.read(bytes, { type: 'array', cellNF: true })
+  // SSF: formatador de números do SheetJS — usado para reconhecer e formatar células de data.
+  const SSF = (XLSX as unknown as { SSF?: { is_date: (f: string) => boolean; format: (f: string, v: number) => string } }).SSF
   const out: SheetDoc[] = []
   for (const name of wb.SheetNames) {
     const ws = wb.Sheets[name]
@@ -53,8 +55,11 @@ export async function importXlsx(): Promise<SheetDoc[] | null> {
           const cell = ws[XLSX.utils.encode_cell({ r, c })] as XLSX.CellObject | undefined
           if (!cell) continue
           let raw: string
-          if (cell.t === 'n') raw = String(cell.v)
-          else if (cell.t === 'b') raw = cell.v ? 'VERDADEIRO' : 'FALSO'
+          if (cell.t === 'n') {
+            // Célula com formato de data: mostra como dd/mm/aaaa em vez do número de série (ex.: 45306).
+            const z = cell.z ? String(cell.z) : ''
+            raw = z && SSF && SSF.is_date(z) ? SSF.format('dd/mm/yyyy', cell.v as number) : String(cell.v)
+          } else if (cell.t === 'b') raw = cell.v ? 'VERDADEIRO' : 'FALSO'
           else raw = String(cell.w ?? cell.v ?? '')
           if (raw !== '') doc.engine.setCell(r, c, raw)
         }
@@ -69,6 +74,16 @@ export async function exportXlsx(sheets: SheetDoc[], suggested: string): Promise
   const path = await window.alcinaFiles.saveDialog({ filters: XLSXF, defaultPath: `${suggested}.xlsx` })
   if (!path) return null
   const wb = XLSX.utils.book_new()
+  // Nomes de aba válidos e únicos: o Excel proíbe \ / ? * [ ] : e nomes repetidos (book_append_sheet lança exceção).
+  const used = new Set<string>()
+  const safeName = (name: string): string => {
+    let n = (name || 'Planilha').replace(/[\\/?*[\]:]/g, ' ').trim().slice(0, 31).trim() || 'Planilha'
+    const base = n
+    let i = 1
+    while (used.has(n.toLowerCase())) { const suffix = ` (${++i})`; n = base.slice(0, 31 - suffix.length).trim() + suffix }
+    used.add(n.toLowerCase())
+    return n
+  }
   for (const s of sheets) {
     const e = s.engine
     const aoa: (string | number | boolean | null)[][] = []
@@ -79,7 +94,7 @@ export async function exportXlsx(sheets: SheetDoc[], suggested: string): Promise
       for (let c = 0; c < cols; c++) row.push(plain(e.getValue(r, c)))
       aoa.push(row)
     }
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), s.name.slice(0, 31))
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), safeName(s.name))
   }
   const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
   await window.alcinaFiles.write(path, new Uint8Array(buf))

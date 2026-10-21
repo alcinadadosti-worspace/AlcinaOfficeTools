@@ -109,7 +109,9 @@ reg(['ARRED', 'ROUND'], (a) => {
   const d = n1(a, 1)
   const dd = isError(d) ? 0 : d
   const f = Math.pow(10, dd)
-  return Math.round(n * f) / f
+  // Arredonda "meio para longe de zero" (como o Excel) com epsilon p/ erro de ponto flutuante.
+  const s = n < 0 ? -1 : 1
+  return (s * Math.floor(Math.abs(n) * f * (1 + 1e-12) + 0.5)) / f
 })
 reg(['ARREDONDAR.PARA.CIMA', 'ROUNDUP'], (a) => {
   const n = n1(a)
@@ -405,7 +407,7 @@ reg(['SINAL', 'SIGN'], (a) => { const n = n1(a); return isError(n) ? n : Math.si
 reg(['FATORIAL', 'FACT'], (a) => { const n = n1(a); if (isError(n)) return n; const k = Math.trunc(n); if (k < 0) return err('#NÚM!'); let f = 1; for (let i = 2; i <= k; i++) f *= i; return f })
 reg(['TETO', 'ARREDMULTSUP', 'CEILING'], (a) => { const n = n1(a); if (isError(n)) return n; const s = a[1] !== undefined ? n1(a, 1) : 1; if (isError(s)) return s; return s === 0 ? 0 : Math.ceil(n / s) * s })
 reg(['ARREDMULTB', 'ARREDMULTINF', 'FLOOR'], (a) => { const n = n1(a); if (isError(n)) return n; const s = a[1] !== undefined ? n1(a, 1) : 1; if (isError(s)) return s; return s === 0 ? err('#DIV/0!') : Math.floor(n / s) * s })
-reg(['MARRED', 'MROUND'], (a) => { const n = n1(a); if (isError(n)) return n; const s = n1(a, 1); if (isError(s)) return s; return s === 0 ? 0 : Math.round(n / s) * s })
+reg(['MARRED', 'MROUND'], (a) => { const n = n1(a); if (isError(n)) return n; const s = n1(a, 1); if (isError(s)) return s; if (s === 0) return 0; const s2 = Math.abs(s); return Math.sign(n) * Math.floor((Math.abs(n) / s2) * (1 + 1e-12) + 0.5) * s2 })
 reg(['ALEATÓRIO', 'ALEATORIO', 'RAND'], () => Math.random())
 reg(['ALEATÓRIOENTRE', 'ALEATORIOENTRE', 'RANDBETWEEN'], (a) => { const lo = n1(a); if (isError(lo)) return lo; const hi = n1(a, 1); if (isError(hi)) return hi; const l = Math.ceil(lo); const h = Math.floor(hi); return l + Math.floor(Math.random() * (h - l + 1)) })
 reg(['SOMARPRODUTO', 'SUMPRODUCT'], (a) => {
@@ -534,14 +536,20 @@ reg(['DIA.DA.SEMANA', 'WEEKDAY'], (a) => { const d = parseDate(scalar(a[0])); re
 
 // ===== Ampliação da biblioteca (v0.5): trigonometria, financeiras, estatística, texto, data/hora, informação =====
 
-function fact(n: number): number { n = Math.trunc(n); if (n < 0) return NaN; let f = 1; for (let i = 2; i <= n; i++) f *= i; return f }
 function toRoman(n: number): string {
   n = Math.trunc(n); if (n <= 0 || n > 3999) return ''
   const map: [number, string][] = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]
   let r = ''; for (const [v, s] of map) while (n >= v) { r += s; n -= v }
   return r
 }
-function addMonths(d: Date, m: number): Date { return new Date(d.getFullYear(), d.getMonth() + Math.trunc(m), d.getDate()) }
+function addMonths(d: Date, m: number): Date {
+  // Fixa no último dia válido quando o mês de destino tem menos dias (ex.: 31/01 + 1 mês = 29/02).
+  const day = d.getDate()
+  const t = new Date(d.getFullYear(), d.getMonth() + Math.trunc(m), 1)
+  const last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate()
+  t.setDate(Math.min(day, last))
+  return t
+}
 function workday(start: Date, days: number): Date {
   const d = new Date(start); let n = Math.abs(Math.trunc(days)); const step = days >= 0 ? 1 : -1
   while (n > 0) { d.setDate(d.getDate() + step); const w = d.getDay(); if (w !== 0 && w !== 6) n-- }
@@ -589,8 +597,8 @@ reg(['PRODUTO', 'MULT', 'PRODUCT'], (a) => { const ns = nums(a); if (!Array.isAr
 reg(['QUOCIENTE', 'QUOTIENT'], (a) => { const x = n1(a); if (isError(x)) return x; const y = n1(a, 1); if (isError(y)) return y; return y === 0 ? err('#DIV/0!') : Math.trunc(x / y) })
 reg(['PAR', 'EVEN'], (a) => { const n = n1(a); if (isError(n)) return n; const s = n < 0 ? -1 : 1; return s * Math.ceil(Math.abs(n) / 2) * 2 })
 reg(['ÍMPAR', 'IMPAR', 'ODD'], (a) => { const n = n1(a); if (isError(n)) return n; const s = n < 0 ? -1 : 1; const k = Math.ceil(Math.abs(n)); return s * (k % 2 === 0 ? k + 1 : k) })
-reg(['COMBIN'], (a) => { const n = n1(a); if (isError(n)) return n; const k = n1(a, 1); if (isError(k)) return k; if (k < 0 || k > n) return err('#NÚM!'); return Math.round(fact(n) / (fact(k) * fact(n - k))) })
-reg(['PERMUT'], (a) => { const n = n1(a); if (isError(n)) return n; const k = n1(a, 1); if (isError(k)) return k; if (k < 0 || k > n) return err('#NÚM!'); return Math.round(fact(n) / fact(n - k)) })
+reg(['COMBIN'], (a) => { const n = n1(a); if (isError(n)) return n; const k = n1(a, 1); if (isError(k)) return k; const N = Math.trunc(n), K = Math.trunc(k); if (K < 0 || K > N) return err('#NÚM!'); const kk = Math.min(K, N - K); let r = 1; for (let i = 1; i <= kk; i++) r = (r * (N - kk + i)) / i; return Math.round(r) })
+reg(['PERMUT'], (a) => { const n = n1(a); if (isError(n)) return n; const k = n1(a, 1); if (isError(k)) return k; const N = Math.trunc(n), K = Math.trunc(k); if (K < 0 || K > N) return err('#NÚM!'); let r = 1; for (let i = 0; i < K; i++) r *= N - i; return r })
 reg(['ROMANO', 'ROMAN'], (a) => { const n = n1(a); if (isError(n)) return n; const r = toRoman(n); return r || err('#VALOR!') })
 
 // --- Estatística adicional ---

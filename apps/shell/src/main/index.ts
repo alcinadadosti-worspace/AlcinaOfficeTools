@@ -1,6 +1,7 @@
 // Processo principal do app "Alcina Office" (central da suíte).
 import { app, BrowserWindow, ipcMain, Menu, shell } from 'electron'
 import { join } from 'node:path'
+import { existsSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { setupAutoUpdates } from '@alcina/updater/main'
 
@@ -47,10 +48,14 @@ app.whenReady().then(() => {
     const allowed = ['sheets', 'docs', 'point', 'notes', 'bi']
     if (!allowed.includes(key)) return { ok: false, error: 'Aplicativo desconhecido.' }
     if (app.isPackaged) return { ok: false, error: 'Abra pelo atalho do aplicativo instalado.' }
+    // Em desenvolvimento, abre o app irmão (apps/<key>) em sua própria janela.
+    const dir = join(process.cwd(), '..', key)
+    if (!existsSync(dir)) return { ok: false, error: `Pasta do aplicativo não encontrada: ${dir}` }
     try {
-      // Em desenvolvimento, abre o app irmão (apps/<key>) em sua própria janela.
-      const dir = join(process.cwd(), '..', key)
-      spawn('npm', ['run', 'dev'], { cwd: dir, detached: true, stdio: 'ignore', shell: true }).unref()
+      const child = spawn('npm', ['run', 'dev'], { cwd: dir, detached: true, stdio: 'ignore', shell: true })
+      // 'error' chega de forma assíncrona (falha ao iniciar): sem listener, o Node derruba o processo principal.
+      child.on('error', (err) => console.error(`Falha ao abrir "${key}":`, err))
+      child.unref()
       return { ok: true }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }

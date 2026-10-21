@@ -290,7 +290,12 @@ export function cartesianOption(input: ChartInput): ChartBuild {
       position: isBar ? (fmt<string>(v, 'labels', 'position') === 'inside' || stacked ? 'inside' : horizontal ? 'right' : 'top') : 'top',
       color: fmt<string>(v, 'labels', 'color') || (stacked && isBar ? undefined : INK_2),
       fontSize: fmt<number>(v, 'labels', 'fontSize'),
-      formatter: (o: { value: number | null }) => (o.value === null ? '' : percent ? formatValue(o.value, '0%') : formatAxis(o.value, d.format, labelUnits === 'auto' ? units : labelUnits)) + (labelDec !== undefined ? '' : '')
+      formatter: (o: { value: number | null }) => {
+        if (o.value === null) return ''
+        if (percent) return formatValue(o.value, '0%')
+        const u = labelUnits === 'auto' ? units : labelUnits
+        return labelDec !== undefined ? formatValue(o.value, d.format, undefined, { units: u, decimals: labelDec }) : formatAxis(o.value, d.format, u)
+      }
     }
     if (isBar) {
       if (d.hl) {

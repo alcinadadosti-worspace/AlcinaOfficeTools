@@ -8,10 +8,24 @@ export interface UpdaterOptions {
   feedUrl?: string
 }
 
+// Janela-alvo atual e guarda de inicialização única: setupAutoUpdates pode ser chamado por janela,
+// mas os handlers IPC e os listeners do autoUpdater só podem ser registrados uma vez por processo.
+let targetWin: BrowserWindow | null = null
+let initialized = false
+let lastStatus: UpdateStatus | null = null
+
+function send(s: UpdateStatus): void {
+  lastStatus = s
+  if (targetWin && !targetWin.isDestroyed()) targetWin.webContents.send(UPDATER_CHANNELS.status, s)
+}
+
 export async function setupAutoUpdates(win: BrowserWindow, opts: UpdaterOptions = {}): Promise<void> {
-  const send = (s: UpdateStatus): void => {
-    if (!win.isDestroyed()) win.webContents.send(UPDATER_CHANNELS.status, s)
+  targetWin = win
+  if (initialized) {
+    if (lastStatus) send(lastStatus) // reenvia o último estado para a janela recém-criada
+    return
   }
+  initialized = true
 
   // electron-updater só funciona no aplicativo instalado (não em desenvolvimento).
   if (!app.isPackaged) {

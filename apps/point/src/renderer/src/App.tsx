@@ -81,6 +81,7 @@ export function App(): ReactNode {
   const [version, setVersion] = useState('')
   const [path, setPath] = useState<string | null>(null)
   const [chartEdit, setChartEdit] = useState<{ id: string; text: string; type: ChartData['type'] } | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
@@ -147,7 +148,7 @@ export function App(): ReactNode {
   })
 
   const addSlide = (): void => { const s = newSlide(); setDeck((d) => ({ ...d, slides: [...d.slides.slice(0, idx + 1), s, ...d.slides.slice(idx + 1)] })); setCurrent(idx + 1); setSelId(null) }
-  const dupSlide = (): void => { const src = deck.slides[idx]; const copy = { id: uid('s'), background: src.background, elements: src.elements.map((e) => ({ ...e, id: uid('e') })) }; setDeck((d) => ({ ...d, slides: [...d.slides.slice(0, idx + 1), copy, ...d.slides.slice(idx + 1)] })); setCurrent(idx + 1); setSelId(null) }
+  const dupSlide = (): void => { const src = deck.slides[idx]; const copy = { ...src, id: uid('s'), elements: src.elements.map((e) => ({ ...e, id: uid('e') })) }; setDeck((d) => ({ ...d, slides: [...d.slides.slice(0, idx + 1), copy, ...d.slides.slice(idx + 1)] })); setCurrent(idx + 1); setSelId(null) }
   const delSlide = (): void => { if (deck.slides.length <= 1) return; setDeck((d) => ({ ...d, slides: d.slides.filter((_, j) => j !== idx) })); setCurrent(Math.max(0, idx - 1)); setSelId(null) }
   const moveSlide = (dir: -1 | 1): void => {
     const j = idx + dir
@@ -160,7 +161,7 @@ export function App(): ReactNode {
     changeEl(selEl.id, axis === 'x' ? { x: Math.round((SLIDE_W - selEl.w) / 2) } : { y: Math.round((SLIDE_H - selEl.h) / 2) })
   }
 
-  const run = (fn: () => Promise<unknown>) => (): void => void fn()
+  const run = (fn: () => Promise<unknown>) => (): void => void fn().catch((err) => setNotice(err instanceof Error ? err.message : 'Não foi possível concluir a operação.'))
   const colorMenu = (apply: (c: string) => void, list: [string, string][]): ReactNode => (
     <MenuList>{list.map(([v, n]) => (<MenuItem key={v} icon={swatch(v)} onClick={() => apply(v)}>{n}</MenuItem>))}</MenuList>
   )
@@ -271,6 +272,12 @@ export function App(): ReactNode {
           </div>
         </div>
       </div>
+      {notice && (
+        <div style={{ position: 'fixed', left: '50%', bottom: 16, transform: 'translateX(-50%)', zIndex: 4000, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: 'var(--ao-surface)', border: '1px solid var(--ao-border)', borderRadius: 8, boxShadow: '0 4px 16px var(--ao-shadow)', fontSize: 13, maxWidth: '80%' }}>
+          <span>{notice}</span>
+          <button onClick={() => setNotice(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ao-text-2)', fontSize: 16, lineHeight: 1 }} aria-label="Fechar">×</button>
+        </div>
+      )}
       {presenting !== false && <Present deck={deck} start={presenting} onClose={() => setPresenting(false)} />}
       <Dialog open={!!chartEdit} onOpenChange={(_, d) => !d.open && setChartEdit(null)}>
         <DialogSurface style={{ maxWidth: 520 }}>

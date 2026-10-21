@@ -5,7 +5,7 @@ import { undo, redo } from 'prosemirror-history'
 import { splitListItem, liftListItem, sinkListItem, wrapInList } from 'prosemirror-schema-list'
 import { addRowAfter, addColumnAfter, deleteRow, deleteColumn, deleteTable, mergeCells, splitCell, goToNextCell } from 'prosemirror-tables'
 import type { Command, Plugin } from 'prosemirror-state'
-import type { MarkType, Node as ProseMirrorNode } from 'prosemirror-model'
+import type { Mark, MarkType, Node as ProseMirrorNode } from 'prosemirror-model'
 import { schema } from './schema'
 
 const li = schema.nodes.list_item
@@ -95,9 +95,34 @@ export function changeCase(mode: 'upper' | 'lower' | 'title'): Command {
   return (state, dispatch) => {
     const { from, to, empty } = state.selection
     if (empty) return false
-    const text = state.doc.textBetween(from, to, ' ')
-    const nt = mode === 'upper' ? text.toUpperCase() : mode === 'lower' ? text.toLowerCase() : text.replace(/\b\w/g, (ch) => ch.toUpperCase())
-    if (dispatch) dispatch(state.tr.insertText(nt, from, to))
+    if (!dispatch) return true
+    // Transformação com estado (título): o limite de palavra é rastreado entre nós e reinicia a cada bloco/quebra.
+    const isWord = (ch: string): boolean => /[0-9A-Za-zÀ-ÿ]/.test(ch)
+    let prevWord = false
+    const transform = (s: string): string => {
+      if (mode === 'upper') return s.toUpperCase()
+      if (mode === 'lower') return s.toLowerCase()
+      let out = ''
+      for (const ch of s) { const w = isWord(ch); out += w && !prevWord ? ch.toUpperCase() : ch; prevWord = w }
+      return out
+    }
+    // Substitui o texto de cada nó em seu lugar: mantém limites de bloco e as marcas de cada trecho.
+    const repls: { from: number; to: number; text: string; marks: readonly Mark[] }[] = []
+    state.doc.nodesBetween(from, to, (node, pos) => {
+      if (!node.isText) { prevWord = false; return true }
+      if (!node.text) return false
+      const start = Math.max(from, pos)
+      const end = Math.min(to, pos + node.nodeSize)
+      if (start >= end) return false
+      repls.push({ from: start, to: end, text: transform(node.text.slice(start - pos, end - pos)), marks: node.marks })
+      return false
+    })
+    const tr = state.tr
+    for (let i = repls.length - 1; i >= 0; i--) {
+      const r = repls[i]
+      tr.replaceWith(r.from, r.to, schema.text(r.text, r.marks))
+    }
+    dispatch(tr.scrollIntoView())
     return true
   }
 }

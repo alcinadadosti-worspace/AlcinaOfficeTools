@@ -165,7 +165,9 @@ app.whenReady().then(() => {
         if (text) {
           const szr = /<a:rPr[^>]*\ssz="(\d+)"/.exec(b)
           const algn = /algn="(ctr|l|r|just)"/.exec(b)
-          const colr = /<a:solidFill><a:srgbClr val="([0-9A-Fa-f]{6})"/.exec(b)
+          // Cor do texto fica dentro do corpo de texto (<p:txBody>); fora dele viria o preenchimento da forma.
+          const tb = b.indexOf('<p:txBody>')
+          const colr = /<a:solidFill><a:srgbClr val="([0-9A-Fa-f]{6})"/.exec(tb >= 0 ? b.slice(tb) : b)
           elements.push({ id: uid('e'), type: 'text', x, y, w, h, text, fontSize: szr ? Math.round(+szr[1] / 100) : 18, bold: /<a:rPr[^>]*\sb="1"/.test(b), color: colr ? `#${colr[1]}` : '#222222', align: algn ? (algn[1] === 'ctr' ? 'center' : algn[1] === 'r' ? 'right' : 'left') : 'left' })
         } else {
           const prst = /<a:prstGeom prst="(\w+)"/.exec(b)

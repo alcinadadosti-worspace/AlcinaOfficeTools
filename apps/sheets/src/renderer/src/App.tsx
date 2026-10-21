@@ -35,7 +35,7 @@ import { AppShell, type RibbonTab } from '@alcina/ui-shell'
 import { getUpdater } from '@alcina/updater/renderer'
 import type { UpdateStatus } from '@alcina/updater'
 import { colToLetter } from '@alcina/sheets-engine'
-import { newSheet, cellKey, type SheetDoc, type CellStyle, type NumFmt, type ChartObj, type ChartType, type CondRule } from './model'
+import { newSheet, cellKey, type SheetDoc, type CellStyle, type NumFmt, type ChartObj, type ChartType, type CondRule, type Merge, type Validation } from './model'
 import { remap, sortBlock, findReplaceAll, fillPlan, fillSeries } from './ops'
 import { buildPivot, AGG_LABEL, type Agg, type PivotCfg } from './pivot'
 import { Grid, type Sel } from './Grid'
@@ -57,6 +57,22 @@ function swatch(c: string): JSX.Element {
 }
 function txtIcon(t: string): JSX.Element {
   return <span style={{ fontWeight: 700, fontSize: 13 }}>{t}</span>
+}
+
+type RangeLike = { r1: number; c1: number; r2: number; c2: number }
+
+// Reposiciona um índice (linha/coluna) após inserir/excluir; null se o próprio índice foi excluído.
+function shiftOne(v: number, at: number, n: number, del: boolean): number | null {
+  if (del) return v < at ? v : v < at + n ? null : v - n
+  return v < at ? v : v + n
+}
+// Reposiciona um intervalo fechado [lo,hi] em um eixo; null se foi totalmente excluído.
+function shiftSpan(lo: number, hi: number, at: number, n: number, del: boolean): [number, number] | null {
+  if (!del) return [lo < at ? lo : lo + n, hi < at ? hi : hi + n]
+  if (lo >= at && hi < at + n) return null
+  const nlo = lo < at ? lo : lo >= at + n ? lo - n : at
+  const nhi = hi < at ? hi : hi >= at + n ? hi - n : at - 1
+  return nhi < nlo ? null : [nlo, nhi]
 }
 
 export function App(): ReactNode {
@@ -338,15 +354,57 @@ export function App(): ReactNode {
     setSelState({ ar: nr, ac: nc, fr: nr, fc: nc })
   }
   const onCommit = (dir: 'down' | 'right'): void => {
-    engine.setCell(sel.ar, sel.ac, editing ?? '')
-    setEditing(null)
-    bump()
+    // editing === null => nenhuma edição em curso (ex.: Enter na barra de fórmulas sem digitar): não apagar.
+    if (editing !== null) {
+      engine.setCell(sel.ar, sel.ac, editing)
+      setEditing(null)
+      bump()
+    }
     move(dir === 'down' ? 1 : 0, dir === 'right' ? 1 : 0)
   }
 
   const applyData = (d: { entries: Parameters<typeof engine.load>[0]; styles: Record<string, CellStyle> }): void => {
     engine.load(d.entries)
     setSheets((arr) => arr.map((sh, i) => (i === idx ? { ...sh, styles: d.styles } : sh)))
+    bump()
+  }
+
+  // Inserir/excluir linhas ou colunas: além das células e estilos, reposiciona comentários,
+  // mesclagens, gráficos, formatação condicional e validações para não dessincronizarem.
+  const applyStructural = (
+    mapFn: (r: number, c: number) => { r: number; c: number } | null,
+    op: { axis: 'row' | 'col'; at: number; n: number; del: boolean }
+  ): void => {
+    const d = remap(engine, styles, mapFn)
+    engine.load(d.entries)
+    const { axis, at, n, del } = op
+    const remapRange = <T extends RangeLike>(o: T): T | null => {
+      if (axis === 'row') { const s = shiftSpan(o.r1, o.r2, at, n, del); return s ? ({ ...o, r1: s[0], r2: s[1] } as T) : null }
+      const s = shiftSpan(o.c1, o.c2, at, n, del)
+      return s ? ({ ...o, c1: s[0], c2: s[1] } as T) : null
+    }
+    setSheets((arr) =>
+      arr.map((sh, i) => {
+        if (i !== idx) return sh
+        const comments: Record<string, string> = {}
+        for (const [k, v] of Object.entries(sh.comments ?? {})) {
+          const ci = k.indexOf(',')
+          const m = mapFn(Number(k.slice(0, ci)), Number(k.slice(ci + 1)))
+          if (m) comments[`${m.r},${m.c}`] = v
+        }
+        const merges = (sh.merges ?? [])
+          .map((mg) => {
+            if (axis === 'row') { const r = shiftOne(mg.r, at, n, del); return r === null ? null : { ...mg, r } }
+            const s = shiftSpan(mg.c, mg.c + mg.cs - 1, at, n, del)
+            return s ? { ...mg, c: s[0], cs: s[1] - s[0] + 1 } : null
+          })
+          .filter((x): x is Merge => x !== null)
+        const charts = (sh.charts ?? []).map(remapRange).filter((x): x is ChartObj => x !== null)
+        const condFormats = (sh.condFormats ?? []).map(remapRange).filter((x): x is CondRule => x !== null)
+        const validations = (sh.validations ?? []).map(remapRange).filter((x): x is Validation => x !== null)
+        return { ...sh, styles: d.styles, comments, merges, charts, condFormats, validations }
+      })
+    )
     bump()
   }
 
@@ -373,16 +431,23 @@ export function App(): ReactNode {
     }
   }
   const onPaste = (): void => {
-    if (clip) {
-      pasteRows(clip)
-      return
-    }
+    // Prefere a área de transferência do sistema; só usa a cópia interna se o conteúdo externo for o mesmo (ou indisponível).
+    const internal = clip ? clip.map((r) => r.join('\t')).join('\n') : null
+    const useInternal = (): void => { if (clip) pasteRows(clip) }
     try {
-      void navigator.clipboard?.readText().then((txt) => {
-        if (txt) pasteRows(txt.replace(/\r/g, '').split('\n').map((l) => l.split('\t')))
-      })
+      const p = navigator.clipboard?.readText?.()
+      if (p && typeof p.then === 'function') {
+        void p
+          .then((txt) => {
+            if (txt && txt !== internal) pasteRows(txt.replace(/\r/g, '').replace(/\n+$/, '').split('\n').map((l) => l.split('\t')))
+            else useInternal()
+          })
+          .catch(() => useInternal())
+      } else {
+        useInternal()
+      }
     } catch {
-      /* sem clipboard */
+      useInternal()
     }
   }
 
@@ -469,10 +534,10 @@ export function App(): ReactNode {
     setEditing(`=${fn}(${ref})`)
   }
   const doSort = (desc: boolean): void => applyData(sortBlock(engine, styles, r1, r2, c1, c2, c1, desc))
-  const insRows = (): void => { const n = r2 - r1 + 1; applyData(remap(engine, styles, (r, c) => ({ r: r >= r1 ? r + n : r, c }))) }
-  const delRows = (): void => { const n = r2 - r1 + 1; applyData(remap(engine, styles, (r, c) => (r >= r1 && r <= r2 ? null : { r: r > r2 ? r - n : r, c }))) }
-  const insCols = (): void => { const n = c2 - c1 + 1; applyData(remap(engine, styles, (r, c) => ({ r, c: c >= c1 ? c + n : c }))) }
-  const delCols = (): void => { const n = c2 - c1 + 1; applyData(remap(engine, styles, (r, c) => (c >= c1 && c <= c2 ? null : { r, c: c > c2 ? c - n : c }))) }
+  const insRows = (): void => { const n = r2 - r1 + 1; applyStructural((r, c) => ({ r: r >= r1 ? r + n : r, c }), { axis: 'row', at: r1, n, del: false }) }
+  const delRows = (): void => { const n = r2 - r1 + 1; applyStructural((r, c) => (r >= r1 && r <= r2 ? null : { r: r > r2 ? r - n : r, c }), { axis: 'row', at: r1, n, del: true }) }
+  const insCols = (): void => { const n = c2 - c1 + 1; applyStructural((r, c) => ({ r, c: c >= c1 ? c + n : c }), { axis: 'col', at: c1, n, del: false }) }
+  const delCols = (): void => { const n = c2 - c1 + 1; applyStructural((r, c) => (c >= c1 && c <= c2 ? null : { r, c: c > c2 ? c - n : c }), { axis: 'col', at: c1, n, del: true }) }
   const runFindReplace = (): void => {
     const n = findReplaceAll(engine, fr.find, fr.replace, fr.matchCase)
     bump()
@@ -700,7 +765,7 @@ export function App(): ReactNode {
             onKeyDown={(e) => {
               if (e.key === 'Enter') { e.preventDefault(); onCommit('down') } else if (e.key === 'Escape') { e.preventDefault(); setEditing(null); bump() }
             }}
-            placeholder="Valor ou fórmula — ex.: =PROCV(A2; D:E; 2)"
+            placeholder="Valor ou fórmula — ex.: =PROCV(A2; D2:E20; 2)"
             style={{ flex: 1, minWidth: 0, border: '1px solid var(--ao-border)', borderRadius: 4, padding: '4px 8px', fontSize: 13, fontFamily: 'Consolas, monospace', background: 'var(--ao-bg)', color: 'var(--ao-text)' }}
           />
         </div>
@@ -714,7 +779,7 @@ export function App(): ReactNode {
           {sheets.map((s, i) => {
             const on = i === active
             return (
-              <div key={i} onClick={() => { setActive(i); setSelState({ ar: 0, ac: 0, fr: 0, fc: 0 }); setEditing(null) }} onDoubleClick={() => setRenaming(i)} style={{ display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 12, cursor: 'pointer', background: on ? 'var(--ao-bg)' : 'transparent', borderRight: '1px solid var(--ao-border)', borderTop: on ? '2px solid var(--ao-green)' : '2px solid transparent', fontWeight: on ? 600 : 400 }}>
+              <div key={i} onClick={() => { setActive(i); setSelState({ ar: 0, ac: 0, fr: 0, fc: 0 }); setEditing(null); setFilter(null); setSelChart(null) }} onDoubleClick={() => setRenaming(i)} style={{ display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 12, cursor: 'pointer', background: on ? 'var(--ao-bg)' : 'transparent', borderRight: '1px solid var(--ao-border)', borderTop: on ? '2px solid var(--ao-green)' : '2px solid transparent', fontWeight: on ? 600 : 400 }}>
                 {renaming === i ? (
                   <input autoFocus defaultValue={s.name} onClick={(e) => e.stopPropagation()} onBlur={(e) => { const v = e.target.value.trim(); if (v) setSheets((arr) => arr.map((x, j) => (j === i ? { ...x, name: v } : x))); setRenaming(null) }} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setRenaming(null) }} style={{ width: 90, font: 'inherit', border: '1px solid var(--ao-green)', borderRadius: 3 }} />
                 ) : (

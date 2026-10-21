@@ -147,12 +147,18 @@ export function App(): ReactNode {
     if (p) setPath(p)
   }
   const doOpen = async (): Promise<void> => {
-    const r = await openNotebook()
-    if (!r) return
-    setNotes(r.notes)
-    setActiveId(r.notes[0].id)
-    apiRef.current?.setJSON(r.notes[0].doc)
-    setPath(r.path)
+    try {
+      const r = await openNotebook()
+      if (!r) return
+      setNotes(r.notes)
+      setActiveId(r.notes[0].id)
+      apiRef.current?.setJSON(r.notes[0].doc)
+      setPath(r.path)
+      setSearch('')
+      setTagFilter(null)
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Não foi possível abrir o arquivo.')
+    }
   }
   const doExportPdf = async (): Promise<void> => {
     const api = apiRef.current

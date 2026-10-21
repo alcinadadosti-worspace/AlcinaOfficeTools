@@ -20,7 +20,7 @@ export async function openDeck(): Promise<{ deck: Deck; path: string } | null> {
   if (!path) return null
   const bytes = await window.alcinaFiles.read(path)
   const deck = JSON.parse(dec.decode(bytes)) as Deck
-  if (deck?.app !== 'alcina-point') throw new Error('Este arquivo não é uma apresentação AlcinaPoint.')
+  if (deck?.app !== 'alcina-point' || !Array.isArray(deck.slides) || !deck.slides.length) throw new Error('Este arquivo não é uma apresentação AlcinaPoint.')
   return { deck, path }
 }
 

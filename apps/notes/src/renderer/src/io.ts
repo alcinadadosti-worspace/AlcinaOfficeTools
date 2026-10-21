@@ -48,7 +48,7 @@ export async function openNotebook(): Promise<{ notes: Note[]; path: string } | 
   if (!path) return null
   const bytes = await window.alcinaFiles.read(path)
   const data = JSON.parse(dec.decode(bytes)) as Notebook
-  if (data?.app !== 'alcina-notes') throw new Error('Este arquivo não é um bloco de notas AlcinaNotes.')
+  if (data?.app !== 'alcina-notes' || !Array.isArray(data.notes)) throw new Error('Este arquivo não é um bloco de notas AlcinaNotes.')
   return { notes: data.notes.length ? data.notes : [newNote('Nota 1')], path }
 }
 

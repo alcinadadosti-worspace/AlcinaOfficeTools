@@ -42,6 +42,7 @@ export class SheetEngine {
   load(entries: CellEntry[]): void {
     this.cells.clear()
     this.cache.clear()
+    this.spillCache.clear()
     this.rows = 0
     this.cols = 0
     for (const e of entries) this.setCell(e.row, e.col, e.raw)
@@ -180,6 +181,7 @@ export class SheetEngine {
   private compare(op: string, l: CellValue, r: CellValue): CellValue {
     let c: number
     if (typeof l === 'number' && typeof r === 'number') c = l < r ? -1 : l > r ? 1 : 0
+    else if (typeof l === 'number' || typeof r === 'number') c = typeof l === 'number' ? -1 : 1 // número < texto; nunca iguais (como no Excel)
     else {
       const a = toText(l).toUpperCase()
       const b = toText(r).toUpperCase()

@@ -86,7 +86,7 @@ export function App(): ReactNode {
   const exec = (c: Command): void => void apiRef.current?.exec(c)
   const run = (fn: (api: EditorApi) => Promise<unknown>) => (): void => {
     const api = apiRef.current
-    if (api) void fn(api)
+    if (api) void fn(api).catch((err) => setNotice(err instanceof Error ? err.message : 'Não foi possível concluir a operação.'))
   }
   const name = baseName(path)
 

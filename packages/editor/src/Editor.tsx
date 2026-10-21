@@ -50,7 +50,7 @@ export interface EditorApi {
 }
 
 const PRINT_CSS =
-  "body{font-family:'Segoe UI',system-ui,sans-serif;color:#222;margin:0}.page{max-width:720px;margin:0 auto;padding:48px;font-size:15px;line-height:1.6}h1{font-size:2em}h2{font-size:1.5em}h3{font-size:1.2em}blockquote{border-left:3px solid #ccc;margin:.5em 0;padding-left:16px;color:#555}ul,ol{padding-left:28px}hr{border:none;border-top:1px solid #ccc}"
+  "body{font-family:'Segoe UI',system-ui,sans-serif;color:#222;margin:0}.page{max-width:720px;margin:0 auto;padding:48px;font-size:15px;line-height:1.6}h1{font-size:2em}h2{font-size:1.5em}h3{font-size:1.2em}blockquote{border-left:3px solid #ccc;margin:.5em 0;padding-left:16px;color:#555}ul,ol{padding-left:28px}hr{border:none;border-top:1px solid #ccc}.ao-task-list{list-style:none;padding-left:0}.ao-task-item{position:relative;padding-left:1.6em;list-style:none}.ao-task-item::before{content:'\\2610';position:absolute;left:0}.ao-task-item[data-checked='true']::before{content:'\\2611'}"
 
 function markActive(state: EditorState, type: MarkType): boolean {
   const { from, $from, to, empty } = state.selection

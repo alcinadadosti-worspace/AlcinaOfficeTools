@@ -81,8 +81,10 @@ export function App(): ReactNode {
   }, [])
 
   const launch = (a: SuiteApp): void => {
+    const api = window.alcinaSuite
+    if (!api) { setNotice('Ponte de inicialização indisponível.'); return }
     setNotice(`Abrindo ${a.name}…`)
-    void window.alcinaSuite.launch(a.key).then((r) => {
+    void api.launch(a.key).then((r) => {
       setNotice(r.ok ? `${a.name} está abrindo em uma nova janela.` : r.error || `Não foi possível abrir ${a.name}.`)
     })
   }
