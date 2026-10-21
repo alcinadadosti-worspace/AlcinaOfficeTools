@@ -1,9 +1,9 @@
 {
   "name": "@alcina/bi",
-  "productName": "AlcinaBi",
+  "productName": "Alcina Office — Analytics",
   "version": "1.0.0",
-  "description": "AlcinaBi Desktop - análise de dados, modelagem e relatórios interativos",
-  "author": "AlcinaBi",
+  "description": "Analytics — análise de dados, modelagem e relatórios interativos (Alcina Office)",
+  "author": "Alcina Dados TI",
   "license": "UNLICENSED",
   "private": true,
   "main": "./out/main/index.js",

@@ -54,7 +54,7 @@ function createWindow(): BrowserWindow {
     minHeight: 600,
     show: false,
     backgroundColor: '#f4f7f3',
-    title: 'AlcinaPoint',
+    title: 'Alcina Office — Apresentações',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

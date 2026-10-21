@@ -20,7 +20,7 @@ function createWindow(): BrowserWindow {
     minHeight: 520,
     show: false,
     backgroundColor: '#f4f7f3',
-    title: 'AlcinaNotes',
+    title: 'Alcina Office — Notas',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

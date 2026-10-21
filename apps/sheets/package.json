@@ -1,8 +1,8 @@
 {
   "name": "@alcina/sheets",
-  "productName": "AlcinaSheets",
+  "productName": "Alcina Office — Planilhas",
   "version": "0.1.0",
-  "description": "AlcinaSheets — planilha da suíte Alcina Office.",
+  "description": "Planilhas — planilha da suíte Alcina Office.",
   "author": "Alcina Dados TI",
   "license": "UNLICENSED",
   "private": true,

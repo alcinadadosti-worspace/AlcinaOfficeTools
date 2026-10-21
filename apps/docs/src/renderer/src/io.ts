@@ -4,7 +4,7 @@ import type { EditorApi } from '@alcina/editor'
 const enc = new TextEncoder()
 const dec = new TextDecoder()
 
-const ALC = [{ name: 'Documento AlcinaDocs', extensions: ['alcdoc'] }]
+const ALC = [{ name: 'Documento do Alcina Office', extensions: ['alcdoc'] }]
 const DOCX = [{ name: 'Documento do Word', extensions: ['docx'] }]
 const PDF = [{ name: 'PDF', extensions: ['pdf'] }]
 
@@ -27,7 +27,7 @@ export async function openDoc(api: EditorApi): Promise<string | null> {
   if (!path) return null
   const bytes = await window.alcinaFiles.read(path)
   const data = JSON.parse(dec.decode(bytes)) as SavedDoc
-  if (data?.app !== 'alcina-docs') throw new Error('Este arquivo não é um documento AlcinaDocs.')
+  if (data?.app !== 'alcina-docs') throw new Error('Este arquivo não é um documento do Alcina Office.')
   api.setJSON(data.doc)
   return path
 }

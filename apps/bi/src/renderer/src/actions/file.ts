@@ -32,11 +32,11 @@ export async function unpackDocument(bytes: Uint8Array): Promise<{ doc: DocState
   try {
     files = unzipSync(bytes)
   } catch {
-    throw new Error('O arquivo não é um relatório AlcinaBi válido.')
+    throw new Error('O arquivo não é um relatório do Alcina Office válido.')
   }
   const manifest = files['manifest.json'] ? JSON.parse(strFromU8(files['manifest.json'])) : null
-  if (!manifest || manifest.format !== FORMAT) throw new Error('O arquivo não é um relatório AlcinaBi válido.')
-  if (manifest.version > FORMAT_VERSION) throw new Error('Este arquivo foi salvo em uma versão mais nova do AlcinaBi.')
+  if (!manifest || manifest.format !== FORMAT) throw new Error('O arquivo não é um relatório do Alcina Office válido.')
+  if (manifest.version > FORMAT_VERSION) throw new Error('Este arquivo foi salvo em uma versão mais nova do Alcina Office.')
   const doc = JSON.parse(strFromU8(files['document.json'])) as DocState
   const data = Object.entries(files)
     .filter(([k]) => k.startsWith('data/') && k.endsWith('.abt'))
@@ -67,7 +67,7 @@ export async function saveAs(): Promise<boolean> {
   const path = await window.alcina.dialog.save({
     title: 'Salvar como',
     defaultPath: current ?? `${fileTitle(null)}.${FILE_EXT}`,
-    filters: [{ name: 'Relatório AlcinaBi', extensions: [FILE_EXT] }]
+    filters: [{ name: 'Relatório do Alcina Office', extensions: [FILE_EXT] }]
   })
   if (!path) return false
   return saveTo(path)
@@ -128,7 +128,7 @@ export async function newFile(force = false): Promise<void> {
 export async function openDialogAndFile(force = false, path?: string): Promise<void> {
   let target = path
   if (!target) {
-    const paths = await window.alcina.dialog.open({ title: 'Abrir relatório', filters: [{ name: 'Relatório AlcinaBi', extensions: [FILE_EXT] }] })
+    const paths = await window.alcina.dialog.open({ title: 'Abrir relatório', filters: [{ name: 'Relatório do Alcina Office', extensions: [FILE_EXT] }] })
     if (!paths || !paths[0]) return
     target = paths[0]
   }

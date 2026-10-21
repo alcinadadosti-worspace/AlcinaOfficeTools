@@ -19,7 +19,7 @@ export interface Notebook {
 
 const enc = new TextEncoder()
 const dec = new TextDecoder()
-const FILTER = [{ name: 'Bloco de notas AlcinaNotes', extensions: ['alcnotes'] }]
+const FILTER = [{ name: 'Bloco de notas do Alcina Office', extensions: ['alcnotes'] }]
 
 let seq = 0
 export function uid(): string {
@@ -48,7 +48,7 @@ export async function openNotebook(): Promise<{ notes: Note[]; path: string } | 
   if (!path) return null
   const bytes = await window.alcinaFiles.read(path)
   const data = JSON.parse(dec.decode(bytes)) as Notebook
-  if (data?.app !== 'alcina-notes' || !Array.isArray(data.notes)) throw new Error('Este arquivo não é um bloco de notas AlcinaNotes.')
+  if (data?.app !== 'alcina-notes' || !Array.isArray(data.notes)) throw new Error('Este arquivo não é um bloco de notas do Alcina Office.')
   return { notes: data.notes.length ? data.notes : [newNote('Nota 1')], path }
 }
 

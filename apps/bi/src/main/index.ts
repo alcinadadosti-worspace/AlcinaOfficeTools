@@ -93,7 +93,7 @@ function createWindow(initialFile: string | null = null): BrowserWindow {
     minHeight: 600,
     show: false,
     backgroundColor: '#f3f2f1',
-    title: 'AlcinaBi',
+    title: 'Alcina Office — Analytics',
     icon: iconPath(),
     titleBarStyle: 'hidden',
     titleBarOverlay: {

@@ -1,5 +1,5 @@
 appId: com.alcina.bi
-productName: AlcinaBi
+productName: "Alcina Office — Analytics"
 executableName: alcina-bi
 directories:
   output: release
@@ -12,7 +12,7 @@ win:
   target:
     - nsis
     - portable
-  artifactName: ${productName}-${version}-win-${arch}.${ext}
+  artifactName: AlcinaOffice-Analytics-${version}-win-${arch}.${ext}
 nsis:
   oneClick: false
   perMachine: false
@@ -24,7 +24,7 @@ linux:
     - deb
   category: Office
   maintainer: Alcina Dados TI
-  artifactName: ${productName}-${version}-linux-${arch}.${ext}
+  artifactName: AlcinaOffice-Analytics-${version}-linux-${arch}.${ext}
 publish:
   provider: generic
   url: https://alcina-office-updates.onrender.com/bi

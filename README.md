@@ -19,11 +19,11 @@ Parecer familiar sem ser uma cópia. Layout e fluxos de uso são convenções li
 
 | Aplicativo | Equivalente | Formato aberto | Peça-chave de engenharia |
 |---|---|---|---|
-| **AlcinaSheets** | Excel | `.xlsx` | Motor de fórmulas próprio (grade + recálculo) |
-| **AlcinaDocs** | Word | `.docx` | Editor de texto rico + paginação |
-| **AlcinaPoint** | PowerPoint | `.pptx` | Tela de slides (reaproveita o canvas do BI) |
-| **AlcinaNotes** | OneNote | `.md` / próprio | Cadernos e blocos de anotação |
-| **AlcinaBi** | Power BI | `.alcbi` | Pronto — a ser integrado à suíte |
+| **Planilhas** | Excel | `.xlsx` | Motor de fórmulas próprio (grade + recálculo) |
+| **Documentos** | Word | `.docx` | Editor de texto rico + paginação |
+| **Apresentações** | PowerPoint | `.pptx` | Tela de slides (reaproveita o canvas do BI) |
+| **Notas** | OneNote | `.md` / próprio | Cadernos e blocos de anotação |
+| **Analytics** | Power BI | `.alcbi` | Pronto — a ser integrado à suíte |
 
 ## Estrutura do monorepo
 
@@ -77,9 +77,9 @@ As peças GPL obrigariam o produto inteiro a virar GPL (incompatível com venda)
 ## Roteiro por fases
 
 1. **Base da suíte** — monorepo, `brand`, `ui-shell`, `updater` e um app "casca" instalável já com auto-update.
-2. **AlcinaSheets** — grade + motor de fórmulas próprio + import/export `.xlsx` + gráficos.
-3. **AlcinaDocs** — editor ProseMirror + leitura/escrita `.docx` + paginação e PDF.
-4. **AlcinaPoint** — canvas de slides + leitura/escrita `.pptx` + modo apresentador.
+2. **Planilhas** — grade + motor de fórmulas próprio + import/export `.xlsx` + gráficos.
+3. **Documentos** — editor ProseMirror + leitura/escrita `.docx` + paginação e PDF.
+4. **Apresentações** — canvas de slides + leitura/escrita `.pptx` + modo apresentador.
 5. **AlcinaNotes + integração** — notas, AlcinaBi migrado e instaladores Windows/Linux finalizados.
 
 ## Aviso legal

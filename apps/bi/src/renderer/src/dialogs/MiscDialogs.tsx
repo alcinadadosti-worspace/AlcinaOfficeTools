@@ -97,7 +97,7 @@ export function AboutDialog() {
         <DialogBody>
           <DialogTitle>
             <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Logo size={28} /> AlcinaBi Desktop
+              <Logo size={28} /> Alcina Office — Analytics
             </span>
           </DialogTitle>
           <DialogContent>
@@ -281,7 +281,7 @@ export function OptionsDialog() {
                 onChange={(_, d) => updateDoc('Data/hora automática', (doc) => void (doc.model.autoDateTime = d.checked))}
               />
               <div style={{ fontSize: 12, color: 'var(--ab-text-2)' }}>
-                Os dados são processados localmente pelo motor do AlcinaBi. Arquivos .alcbi guardam o modelo, o relatório e uma cópia compactada dos dados carregados.
+                Os dados são processados localmente pelo motor do Alcina Office. Arquivos .alcbi guardam o modelo, o relatório e uma cópia compactada dos dados carregados.
               </div>
             </div>
           </DialogContent>

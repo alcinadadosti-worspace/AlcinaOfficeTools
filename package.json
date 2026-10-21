@@ -2,7 +2,7 @@
   "name": "alcina-office-tools",
   "private": true,
   "version": "0.0.0",
-  "description": "Suíte de produtividade Alcina (clean-room): AlcinaSheets, AlcinaDocs, AlcinaPoint, AlcinaNotes e AlcinaBi.",
+  "description": "Suíte de produtividade Alcina Office (clean-room): Planilhas, Documentos, Apresentações, Notas e Analytics.",
   "author": "Alcina Dados TI",
   "license": "UNLICENSED",
   "engines": {

@@ -1,8 +1,8 @@
 {
   "name": "@alcina/notes",
-  "productName": "AlcinaNotes",
+  "productName": "Alcina Office — Notas",
   "version": "0.1.0",
-  "description": "AlcinaNotes — anotações da suíte Alcina Office.",
+  "description": "Notas — anotações da suíte Alcina Office.",
   "author": "Alcina Dados TI",
   "license": "UNLICENSED",
   "private": true,

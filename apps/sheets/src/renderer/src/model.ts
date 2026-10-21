@@ -111,7 +111,7 @@ export function serialize(sheets: SheetDoc[]): SavedWorkbook {
 }
 
 export function deserialize(data: SavedWorkbook): SheetDoc[] {
-  if (!data || data.app !== 'alcina-sheets') throw new Error('Este arquivo não é uma planilha AlcinaSheets.')
+  if (!data || data.app !== 'alcina-sheets') throw new Error('Este arquivo não é uma planilha do Alcina Office.')
   const out = (data.sheets ?? []).map((s) => {
     const e = new SheetEngine()
     e.load(s.cells ?? [])

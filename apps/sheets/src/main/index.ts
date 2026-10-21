@@ -19,7 +19,7 @@ function createWindow(): BrowserWindow {
     minHeight: 560,
     show: false,
     backgroundColor: '#f4f7f3',
-    title: 'AlcinaSheets',
+    title: 'Alcina Office — Planilhas',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

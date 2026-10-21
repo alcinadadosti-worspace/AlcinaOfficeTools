@@ -4,7 +4,7 @@ import type { Deck } from '../../shared/deck'
 const enc = new TextEncoder()
 const dec = new TextDecoder()
 
-const ALC = [{ name: 'Apresentação AlcinaPoint', extensions: ['alcpoint'] }]
+const ALC = [{ name: 'Apresentação do Alcina Office', extensions: ['alcpoint'] }]
 const PPTX = [{ name: 'Apresentação do PowerPoint', extensions: ['pptx'] }]
 const IMG = [{ name: 'Imagens', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'] }]
 
@@ -20,7 +20,7 @@ export async function openDeck(): Promise<{ deck: Deck; path: string } | null> {
   if (!path) return null
   const bytes = await window.alcinaFiles.read(path)
   const deck = JSON.parse(dec.decode(bytes)) as Deck
-  if (deck?.app !== 'alcina-point' || !Array.isArray(deck.slides) || !deck.slides.length) throw new Error('Este arquivo não é uma apresentação AlcinaPoint.')
+  if (deck?.app !== 'alcina-point' || !Array.isArray(deck.slides) || !deck.slides.length) throw new Error('Este arquivo não é uma apresentação do Alcina Office.')
   return { deck, path }
 }
 

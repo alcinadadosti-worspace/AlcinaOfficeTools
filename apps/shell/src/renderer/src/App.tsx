@@ -17,11 +17,11 @@ interface SuiteApp {
 }
 
 const APPS: SuiteApp[] = [
-  { key: 'sheets', name: 'AlcinaSheets', short: 'Sheets', desc: 'Planilhas e fórmulas', glyph: <SheetsGlyph size={40} />, color: appColors.sheets, ready: true },
-  { key: 'docs', name: 'AlcinaDocs', short: 'Docs', desc: 'Documentos de texto', glyph: <DocsGlyph size={40} />, color: appColors.docs, ready: true },
-  { key: 'point', name: 'AlcinaPoint', short: 'Point', desc: 'Apresentações', glyph: <PointGlyph size={40} />, color: appColors.point, ready: true },
-  { key: 'notes', name: 'AlcinaNotes', short: 'Notes', desc: 'Anotações', glyph: <NotesGlyph size={40} />, color: appColors.notes, ready: true },
-  { key: 'bi', name: 'AlcinaBi', short: 'BI', desc: 'Relatórios e BI', glyph: <BiGlyph size={40} />, color: appColors.bi, ready: true }
+  { key: 'sheets', name: 'Planilhas', short: 'Planilhas', desc: 'Cálculos, tabelas e gráficos', glyph: <SheetsGlyph size={40} />, color: appColors.sheets, ready: true },
+  { key: 'docs', name: 'Documentos', short: 'Documentos', desc: 'Textos, páginas e PDF', glyph: <DocsGlyph size={40} />, color: appColors.docs, ready: true },
+  { key: 'point', name: 'Apresentações', short: 'Apresentações', desc: 'Slides e exposições', glyph: <PointGlyph size={40} />, color: appColors.point, ready: true },
+  { key: 'notes', name: 'Notas', short: 'Notas', desc: 'Cadernos e anotações', glyph: <NotesGlyph size={40} />, color: appColors.notes, ready: true },
+  { key: 'bi', name: 'Analytics', short: 'Analytics', desc: 'Relatórios e análises', glyph: <BiGlyph size={40} />, color: appColors.bi, ready: true }
 ]
 
 // Cartão com brilho que segue o cursor e leve inclinação 3D (atualiza variáveis CSS via ref).

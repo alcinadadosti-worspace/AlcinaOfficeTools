@@ -6,7 +6,7 @@ import { serialize, deserialize, newSheet, type SheetDoc } from './model'
 const enc = new TextEncoder()
 const dec = new TextDecoder()
 
-const ALC = [{ name: 'Planilha AlcinaSheets', extensions: ['alcsheet'] }]
+const ALC = [{ name: 'Planilha do Alcina Office', extensions: ['alcsheet'] }]
 const XLSXF = [{ name: 'Pasta de trabalho do Excel', extensions: ['xlsx'] }]
 const CSVF = [{ name: 'Valores separados (CSV)', extensions: ['csv', 'txt'] }]
 

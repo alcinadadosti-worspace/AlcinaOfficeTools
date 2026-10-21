@@ -1,7 +1,7 @@
 // Logotipo do AlcinaBi (desenho próprio).
 export function Logo({ size = 20 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-label="AlcinaBi">
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-label="Analytics">
       <defs>
         <linearGradient id="ab-g" x1="0" y1="1" x2="1" y2="0">
           <stop offset="0" stopColor="#0a8fa3" />

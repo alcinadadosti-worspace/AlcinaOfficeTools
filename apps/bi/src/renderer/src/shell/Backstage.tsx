@@ -62,7 +62,7 @@ export function Backstage({ onClose }: { onClose: () => void }) {
       <div style={{ flex: 1, padding: '32px 48px', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
           <Logo size={36} />
-          <div style={{ fontSize: 26, fontWeight: 600 }}>AlcinaBi</div>
+          <div style={{ fontSize: 26, fontWeight: 600 }}>Analytics</div>
         </div>
         <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Relatórios recentes</div>
         {recent.length === 0 && <div style={{ color: 'var(--ab-text-3)' }}>Nenhum relatório aberto recentemente.</div>}

@@ -37,7 +37,7 @@ export function StartScreen() {
         </button>
         <div style={{ width: 300, background: 'linear-gradient(160deg, #0b3f45 0%, #0f7e89 100%)', color: '#ffffff', padding: 28, display: 'flex', flexDirection: 'column' }}>
           <Logo size={44} />
-          <div style={{ fontSize: 28, fontWeight: 700, marginTop: 16 }}>AlcinaBi</div>
+          <div style={{ fontSize: 28, fontWeight: 700, marginTop: 16 }}>Analytics</div>
           <div style={{ fontSize: 14, opacity: 0.9, marginTop: 6 }}>Desktop</div>
           <div style={{ marginTop: 28, fontSize: 14, lineHeight: 1.5, opacity: 0.95 }}>
             Conecte-se aos seus dados, transforme-os, crie medidas DAX e monte relatórios interativos — tudo no seu computador.

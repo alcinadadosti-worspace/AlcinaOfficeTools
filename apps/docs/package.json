@@ -1,8 +1,8 @@
 {
   "name": "@alcina/docs",
-  "productName": "AlcinaDocs",
+  "productName": "Alcina Office — Documentos",
   "version": "0.1.0",
-  "description": "AlcinaDocs — editor de documentos da suíte Alcina Office.",
+  "description": "Documentos — editor de documentos da suíte Alcina Office.",
   "author": "Alcina Dados TI",
   "license": "UNLICENSED",
   "private": true,

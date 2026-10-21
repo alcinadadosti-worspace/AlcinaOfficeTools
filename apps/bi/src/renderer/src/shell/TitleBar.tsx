@@ -40,7 +40,7 @@ export function TitleBar() {
   const dirty = useDoc((s) => s.dirty)
   const canUndo = useDoc((s) => s.past.length > 0)
   const canRedo = useDoc((s) => s.future.length > 0)
-  const title = `${fileTitle(filePath)}${dirty ? ' •' : ''} - AlcinaBi`
+  const title = `${fileTitle(filePath)}${dirty ? ' •' : ''} - Analytics`
   return (
     <div
       className="ab-drag"
