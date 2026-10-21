@@ -2,7 +2,9 @@
 
 Suíte de produtividade própria da **Alcina Dados TI** — planilha, documentos, apresentações, notas e BI — com os mesmos recursos do pacote Office, construída do zero (clean-room) e compatível com os arquivos que os usuários já têm.
 
-> **Status:** fase de planejamento + esqueleto do monorepo. O código dos aplicativos ainda não foi escrito.
+> **Status:** os 5 aplicativos + a Central estão implementados, com instaladores para Windows e Linux e atualização automática.
+>
+> 📥 **Quer só instalar e usar?** Veja o **[guia de instalação (INSTALAR.md)](INSTALAR.md)** ou baixe direto em **[Releases](https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases)**.
 
 ## Princípios clean-room
 
