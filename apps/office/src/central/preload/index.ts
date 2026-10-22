@@ -1,6 +1,15 @@
 // Preload: expõe APIs seguras do app e da atualização ao renderer.
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import { UPDATER_CHANNELS, type UpdateStatus } from '@alcina/updater'
+import type { UpdateStatus } from '@alcina/updater'
+
+// Canais do atualizador inlinados (não importados) de propósito: mantém este preload autocontido,
+// evitando que o Rollup extraia um chunk compartilhado — require("./chunks/...") é proibido em
+// preload com sandbox:true. Fonte da verdade: packages/updater/src/ipc.ts.
+const UPDATER_CHANNELS = {
+  status: 'alcina-updater:status',
+  check: 'alcina-updater:check',
+  install: 'alcina-updater:install'
+} as const
 
 contextBridge.exposeInMainWorld('alcinaApp', {
   getVersion: () => ipcRenderer.invoke('app:version'),
