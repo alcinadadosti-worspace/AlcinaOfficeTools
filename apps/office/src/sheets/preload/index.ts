@@ -35,5 +35,13 @@ contextBridge.exposeInMainWorld('alcinaFiles', {
   openDialog: (opts: DialogOpts) => ipcRenderer.invoke('dialog:open', opts),
   saveDialog: (opts: DialogOpts) => ipcRenderer.invoke('dialog:save', opts),
   read: (path: string) => ipcRenderer.invoke('fs:read', path),
-  write: (path: string, data: Uint8Array) => ipcRenderer.invoke('fs:write', path, data)
+  write: (path: string, data: Uint8Array) => ipcRenderer.invoke('fs:write', path, data),
+  // Arquivo inicial (quando a janela é aberta via "Abrir com" do Windows e ainda não existia).
+  getInitialFile: () => ipcRenderer.invoke('tool:initial-file'),
+  // "Abrir com" quando a janela já está aberta: o processo principal empurra o caminho.
+  onOpenFile: (cb: (path: string) => void) => {
+    const l = (_e: IpcRendererEvent, p: string): void => cb(p)
+    ipcRenderer.on('tool:open-file', l)
+    return () => ipcRenderer.removeListener('tool:open-file', l)
+  }
 })

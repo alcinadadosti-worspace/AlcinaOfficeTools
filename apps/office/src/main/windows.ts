@@ -77,3 +77,8 @@ export function openTool(tool: ToolKey): BrowserWindow {
 export function focusedToolCount(): number {
   return open.size
 }
+
+export function isToolOpen(tool: ToolKey): boolean {
+  const w = open.get(tool)
+  return !!w && !w.isDestroyed()
+}

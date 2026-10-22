@@ -7,10 +7,34 @@ directories:
 files:
   - out/**/*
   - package.json
+# Associações de arquivo: o app passa a aparecer no "Abrir com" do Windows para estes tipos
+# (e abre no Planilhas). Registrado pelo instalador NSIS.
+fileAssociations:
+  - ext: alcsheet
+    name: Planilha do Alcina Office
+    description: Planilha do Alcina Office
+    role: Editor
+  - ext: xlsx
+    name: Pasta de trabalho do Excel
+    description: Planilha
+    role: Editor
+  - ext: xlsm
+    name: Pasta de trabalho do Excel com macros
+    role: Editor
+  - ext: xls
+    name: Planilha do Excel 97-2003
+    role: Editor
+  - ext: csv
+    name: Valores separados por vírgula
+    role: Editor
+  - ext: ods
+    name: Planilha OpenDocument
+    role: Editor
 win:
   icon: build/icon.ico
   target:
     - nsis
+    - zip
   artifactName: AlcinaOffice-${version}-win-${arch}.${ext}
 nsis:
   oneClick: false

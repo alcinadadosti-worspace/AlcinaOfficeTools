@@ -17,6 +17,8 @@ declare global {
       saveDialog(opts: { filters?: FileFilter[]; defaultPath?: string }): Promise<string | null>
       read(path: string): Promise<Uint8Array>
       write(path: string, data: Uint8Array): Promise<void>
+      getInitialFile(): Promise<string | null>
+      onOpenFile(cb: (path: string) => void): () => void
     }
   }
 }

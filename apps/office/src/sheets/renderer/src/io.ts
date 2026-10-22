@@ -7,8 +7,18 @@ const enc = new TextEncoder()
 const dec = new TextDecoder()
 
 const ALC = [{ name: 'Planilha do Alcina Office', extensions: ['alcsheet'] }]
-const XLSXF = [{ name: 'Pasta de trabalho do Excel', extensions: ['xlsx'] }]
+// "Importar Excel" / abrir Excel aceita os formatos que o SheetJS lê.
+const XLSXF = [{ name: 'Pasta de trabalho do Excel', extensions: ['xlsx', 'xlsm', 'xlsb', 'xls', 'ods'] }]
 const CSVF = [{ name: 'Valores separados (CSV)', extensions: ['csv', 'txt'] }]
+// "Abrir" mostra TODOS os tipos que o app consegue ler (como o Excel, que abre vários formatos).
+// O primeiro filtro é o padrão do diálogo — por isso as planilhas .xlsx aparecem de cara.
+const OPEN_ALL = [
+  { name: 'Todas as planilhas', extensions: ['alcsheet', 'xlsx', 'xlsm', 'xlsb', 'xls', 'ods', 'csv', 'txt'] },
+  { name: 'Pasta de trabalho do Excel', extensions: ['xlsx', 'xlsm', 'xlsb', 'xls', 'ods'] },
+  { name: 'Planilha do Alcina Office', extensions: ['alcsheet'] },
+  { name: 'Valores separados (CSV/texto)', extensions: ['csv', 'txt'] },
+  { name: 'Todos os arquivos', extensions: ['*'] }
+]
 
 function baseName(path: string): string {
   const f = path.split(/[\\/]/).pop() ?? path
@@ -29,17 +39,40 @@ export async function saveWorkbook(sheets: SheetDoc[], suggested: string): Promi
 }
 
 export async function openWorkbook(): Promise<{ sheets: SheetDoc[]; path: string } | null> {
-  const path = await window.alcinaFiles.openDialog({ filters: ALC })
+  const path = await window.alcinaFiles.openDialog({ filters: OPEN_ALL })
   if (!path) return null
+  return loadFromPath(path)
+}
+
+// Carrega uma planilha de um caminho já conhecido — usado tanto pelo diálogo "Abrir" quanto
+// pelo "Abrir com" do Windows (associação de arquivo). Reconhece o tipo pela extensão.
+export async function loadFromPath(path: string): Promise<{ sheets: SheetDoc[]; path: string } | null> {
   const bytes = await window.alcinaFiles.read(path)
-  const data = JSON.parse(dec.decode(bytes)) as import('./model').SavedWorkbook
-  return { sheets: deserialize(data), path }
+  const ext = (path.split('.').pop() ?? '').toLowerCase()
+  if (ext === 'alcsheet') {
+    const data = JSON.parse(dec.decode(bytes)) as import('./model').SavedWorkbook
+    return { sheets: deserialize(data), path }
+  }
+  if (ext === 'csv' || ext === 'txt') {
+    const doc = newSheet(baseName(path))
+    const rows = parseCsv(dec.decode(bytes))
+    rows.forEach((cells, r) => cells.forEach((val, c) => val !== '' && doc.engine.setCell(r, c, val)))
+    return { sheets: [doc], path }
+  }
+  // Excel e afins (xlsx/xlsm/xlsb/xls/ods) via SheetJS.
+  const sheets = parseXlsxBytes(bytes)
+  return sheets ? { sheets, path } : null
 }
 
 export async function importXlsx(): Promise<SheetDoc[] | null> {
   const path = await window.alcinaFiles.openDialog({ filters: XLSXF })
   if (!path) return null
   const bytes = await window.alcinaFiles.read(path)
+  return parseXlsxBytes(bytes)
+}
+
+// Converte os bytes de um arquivo Excel/ODS em documentos de planilha (valores formatados).
+function parseXlsxBytes(bytes: Uint8Array): SheetDoc[] | null {
   const wb = XLSX.read(bytes, { type: 'array', cellNF: true })
   // SSF: formatador de números do SheetJS — usado para reconhecer e formatar células de data.
   const SSF = (XLSX as unknown as { SSF?: { is_date: (f: string) => boolean; format: (f: string, v: number) => string } }).SSF

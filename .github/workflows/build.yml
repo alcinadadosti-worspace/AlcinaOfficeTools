@@ -43,6 +43,7 @@ jobs:
           if-no-files-found: ignore
           path: |
             apps/${{ matrix.app }}/release/*.exe
+            apps/${{ matrix.app }}/release/*.zip
             apps/${{ matrix.app }}/release/*.AppImage
             apps/${{ matrix.app }}/release/*.deb
             apps/${{ matrix.app }}/release/*.yml
@@ -63,7 +64,7 @@ jobs:
             --notes "Instalador único do Alcina Office (Central + todas as ferramentas). Assets atualizados automaticamente pelo CI — não editar manualmente." \
             --latest=true || true
           shopt -s nullglob
-          files=(release/*.exe release/*.exe.blockmap release/*.yml release/*.AppImage release/*.deb)
+          files=(release/*.exe release/*.exe.blockmap release/*.zip release/*.yml release/*.AppImage release/*.deb)
           if [ ${#files[@]} -gt 0 ]; then
             gh release upload "$tag" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber
           else

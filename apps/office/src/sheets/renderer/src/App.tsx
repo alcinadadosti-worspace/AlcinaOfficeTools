@@ -40,7 +40,7 @@ import { remap, sortBlock, findReplaceAll, fillPlan, fillSeries } from './ops'
 import { buildPivot, AGG_LABEL, type Agg, type PivotCfg } from './pivot'
 import { Grid, type Sel } from './Grid'
 import { ChartLayer } from './ChartLayer'
-import { saveWorkbook, openWorkbook, importCsv, exportCsv, importXlsx, exportXlsx } from './io'
+import { saveWorkbook, openWorkbook, loadFromPath, importCsv, exportCsv, importXlsx, exportXlsx } from './io'
 
 const ROWS = 200
 const COLS = 40
@@ -101,7 +101,11 @@ export function App(): ReactNode {
   useEffect(() => {
     window.alcinaApp?.getVersion().then(setVersion).catch(() => undefined)
     const off = getUpdater()?.onStatus(setStatus)
-    return () => off?.()
+    // Abrir arquivo vindo do "Abrir com" do Windows: ao abrir (arquivo inicial) e enquanto estiver aberto.
+    const load = (p: string): void => { void loadFromPath(p).then((r) => { if (r) replace(r.sheets, r.path) }).catch(() => undefined) }
+    window.alcinaFiles?.getInitialFile?.().then((p) => { if (p) load(p) }).catch(() => undefined)
+    const offOpen = window.alcinaFiles?.onOpenFile?.(load)
+    return () => { off?.(); offOpen?.() }
   }, [])
 
   const idx = Math.min(active, sheets.length - 1)
