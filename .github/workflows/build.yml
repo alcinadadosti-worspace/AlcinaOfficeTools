@@ -1,6 +1,8 @@
 name: Instaladores
 
-# Gera os instaladores (Windows .exe + Linux AppImage/.deb) de cada aplicativo.
+# Gera o instalador único do Alcina Office (Windows .exe + Linux AppImage/.deb).
+# Um só aplicativo contém a Central e todas as ferramentas (Planilhas, Documentos,
+# Apresentações, Notas e Analytics), cada uma abrindo em sua própria janela.
 # Dispara manualmente (workflow_dispatch) ou ao publicar uma tag "v*".
 on:
   workflow_dispatch:
@@ -17,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest]
-        app: [shell, sheets, docs, point, notes, bi]
+        app: [office]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -57,9 +59,9 @@ jobs:
         run: |
           tag="${{ matrix.app }}"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" \
-            --title "Alcina Office — $tag (canal de atualização)" \
-            --notes "Assets de auto-update atualizados automaticamente pelo CI. Não editar manualmente." \
-            --latest=false || true
+            --title "Alcina Office — instalador e atualizações" \
+            --notes "Instalador único do Alcina Office (Central + todas as ferramentas). Assets atualizados automaticamente pelo CI — não editar manualmente." \
+            --latest=true || true
           shopt -s nullglob
           files=(release/*.exe release/*.exe.blockmap release/*.yml release/*.AppImage release/*.deb)
           if [ ${#files[@]} -gt 0 ]; then

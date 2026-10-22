@@ -1,0 +1,13 @@
+// API pública do editor de consultas e dos importadores.
+export * from './types'
+export { QueryRunner, QueryError } from './run'
+export { applyStep, compileCondition, evalCompare, stepDependencies, defaultStepContext, StepError, type StepContext } from './steps'
+export { compileMExpression, compileMPredicate, evaluateColumnExpression, parseMExpression, MError, M_FUNCTION_NAMES } from './mexpr'
+export { stepFormula, sourceFormula, queryScript, conditionCode, mIdent, mText, mType, mValue } from './mcode'
+export { defaultStepName, uniqueStepName, uniqueQueryName, newId, SOURCE_STEP_NAME, DATE_PART_LABEL } from './names'
+export { profileColumn, previewRows, formatPreviewCell, formatPreviewValue, type PreviewCell } from './profile'
+export { parseCsv, parseCsvText, decodeText, detectDelimiter, type CsvOptions } from '../io/csv'
+export { listExcelSheets, readExcelSheet } from '../io/excel'
+export { parseJsonTable, jsonToTable } from '../io/json'
+export { looksLikeHeaderRow, autoSteps, type AutoStepOptions } from '../io/headers'
+export { jsToScalar, typedColumnFromValues, commonScalarType } from '../io/values'

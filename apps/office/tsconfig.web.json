@@ -1,0 +1,45 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "paths": {
+      "@alcina/brand": ["../../packages/brand/src/index.ts"],
+      "@alcina/ui-shell": ["../../packages/ui-shell/src/index.ts"],
+      "@alcina/updater": ["../../packages/updater/src/index.ts"],
+      "@alcina/updater/renderer": ["../../packages/updater/src/renderer.ts"],
+      "@alcina/sheets-engine": ["../../packages/sheets-engine/src/index.ts"],
+      "@alcina/editor": ["../../packages/editor/src/index.ts"],
+      "@alcina/editor/docmodel": ["../../packages/editor/src/docmodel.ts"],
+      "@engine/*": ["./src/bi/engine/*"],
+      "@shared/*": ["./src/bi/shared/*"],
+      "@renderer/*": ["./src/bi/renderer/src/*"]
+    }
+  },
+  "include": [
+    "src/central/renderer/src/**/*",
+    "src/sheets/renderer/src/**/*",
+    "src/docs/renderer/src/**/*",
+    "src/point/renderer/src/**/*",
+    "src/notes/renderer/src/**/*",
+    "src/bi/renderer/src/**/*",
+    "src/bi/engine/**/*",
+    "src/bi/shared/**/*",
+    "src/point/shared/**/*",
+    "src/central/preload/*.d.ts",
+    "src/sheets/preload/*.d.ts",
+    "src/docs/preload/*.d.ts",
+    "src/point/preload/*.d.ts",
+    "src/notes/preload/*.d.ts",
+    "src/bi/preload/*.d.ts",
+    "../../packages/brand/src/**/*",
+    "../../packages/ui-shell/src/**/*",
+    "../../packages/editor/src/**/*",
+    "../../packages/sheets-engine/src/**/*",
+    "../../packages/updater/src/index.ts",
+    "../../packages/updater/src/ipc.ts",
+    "../../packages/updater/src/renderer.ts"
+  ]
+}

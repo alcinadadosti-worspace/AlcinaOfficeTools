@@ -2,9 +2,9 @@
 
 Suíte de produtividade própria da **Alcina Dados TI** — planilha, documentos, apresentações, notas e BI — com os mesmos recursos do pacote Office, construída do zero (clean-room) e compatível com os arquivos que os usuários já têm.
 
-> **Status:** os 5 aplicativos + a Central estão implementados, com instaladores para Windows e Linux e atualização automática.
+> **Status:** suíte completa implementada e distribuída como **um único aplicativo** (`apps/office`) — a Central abre cada ferramenta (Planilhas, Documentos, Apresentações, Notas e Analytics) em sua própria janela, com um só instalador e uma só atualização automática, para Windows e Linux.
 >
-> 📥 **Quer só instalar e usar?** Veja o **[guia de instalação (INSTALAR.md)](INSTALAR.md)** ou baixe direto em **[Releases](https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases)**.
+> 📥 **Quer só instalar e usar?** Veja o **[guia de instalação (INSTALAR.md)](INSTALAR.md)** ou baixe o instalador único em **[Releases → office](https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases/tag/office)**.
 
 ## Princípios clean-room
 
@@ -38,11 +38,12 @@ alcina-office-tools/
 │   ├── engine/          # dados, fórmulas, DAX (do AlcinaBi)
 │   └── updater/         # auto-update (electron-updater + Render)
 ├── apps/
-│   ├── sheets/          # AlcinaSheets
-│   ├── docs/            # AlcinaDocs
-│   ├── point/           # AlcinaPoint
-│   ├── notes/           # AlcinaNotes
-│   └── bi/              # AlcinaBi (a migrar)
+│   ├── office/          # ★ app único distribuído (Central + todas as ferramentas em janelas)
+│   ├── sheets/          # Planilhas  (app separado, base do office)
+│   ├── docs/            # Documentos (app separado, base do office)
+│   ├── point/           # Apresentações (app separado, base do office)
+│   ├── notes/           # Notas      (app separado, base do office)
+│   └── bi/              # Analytics  (app separado, base do office)
 └── build/               # electron-builder: Windows + Linux
 ```
 

@@ -1,0 +1,33 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "noEmit": true,
+    "paths": {
+      "@alcina/updater/main": ["../../packages/updater/src/main.ts"],
+      "@alcina/updater": ["../../packages/updater/src/index.ts"],
+      "@alcina/editor/docmodel": ["../../packages/editor/src/docmodel.ts"],
+      "@shared/*": ["./src/bi/shared/*"]
+    }
+  },
+  "include": [
+    "src/main/**/*",
+    "src/docs/main/**/*",
+    "src/point/main/**/*",
+    "src/point/shared/**/*",
+    "src/bi/main/**/*",
+    "src/bi/shared/**/*",
+    "src/central/preload/index.ts",
+    "src/sheets/preload/index.ts",
+    "src/docs/preload/index.ts",
+    "src/point/preload/index.ts",
+    "src/notes/preload/index.ts",
+    "src/bi/preload/index.ts",
+    "../../packages/updater/src/main.ts",
+    "../../packages/updater/src/ipc.ts",
+    "../../packages/updater/src/index.ts",
+    "../../packages/editor/src/docmodel.ts",
+    "electron.vite.config.ts"
+  ]
+}

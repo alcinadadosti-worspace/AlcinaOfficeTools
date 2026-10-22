@@ -1,8 +1,8 @@
 @echo off
 title Alcina Office
-cd /d "%~dp0apps\shell"
+cd /d "%~dp0apps\office"
 echo ============================================
-echo   Iniciando a central Alcina Office...
+echo   Iniciando o Alcina Office...
 echo   (deixe ESTA janela aberta; feche-a para encerrar)
 echo ============================================
 echo.

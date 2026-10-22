@@ -1,0 +1,30 @@
+appId: com.alcina.office
+productName: Alcina Office
+executableName: alcina-office
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+win:
+  icon: build/icon.ico
+  target:
+    - nsis
+  artifactName: AlcinaOffice-${version}-win-${arch}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: Alcina Office
+linux:
+  icon: build/icon.png
+  target:
+    - AppImage
+    - deb
+  category: Office
+  maintainer: Alcina Dados TI
+  artifactName: AlcinaOffice-${version}-linux-${arch}.${ext}
+publish:
+  provider: generic
+  url: https://github.com/alcinadadosti-worspace/AlcinaOfficeTools/releases/download/office
