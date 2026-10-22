@@ -568,6 +568,29 @@ export function App(): ReactNode {
 
   const ribbon: RibbonTab[] = [
     {
+      key: 'file',
+      label: 'Arquivo',
+      groups: [
+        {
+          label: 'Arquivo',
+          items: [
+            { key: 'new', label: 'Novo', icon: <DocumentAdd24Regular />, onClick: () => replace([newSheet('Planilha1')], null) },
+            { key: 'open', label: 'Abrir', icon: <FolderOpen24Regular />, onClick: run(async () => { const r = await openWorkbook(); if (r) replace(r.sheets, r.path) }) },
+            { key: 'save', label: 'Salvar', icon: <Save24Regular />, onClick: run(async () => { const p = await saveWorkbook(sheets, docName); if (p) setPath(p) }) }
+          ]
+        },
+        {
+          label: 'Importar / Exportar',
+          items: [
+            { key: 'icsv', label: 'Importar CSV', icon: <ArrowUpload24Regular />, onClick: run(async () => { const d = await importCsv(); if (d) replace([d], null) }) },
+            { key: 'ixlsx', label: 'Importar Excel', icon: <DocumentTable24Regular />, onClick: run(async () => { const d = await importXlsx(); if (d) replace(d, null) }) },
+            { key: 'ecsv', label: 'Exportar CSV', icon: <ArrowDownload24Regular />, onClick: run(async () => { await exportCsv(sheet, docName) }) },
+            { key: 'exlsx', label: 'Exportar Excel', icon: <DocumentTable24Regular />, onClick: run(async () => { await exportXlsx(sheets, docName) }) }
+          ]
+        }
+      ]
+    },
+    {
       key: 'home',
       label: 'Página Inicial',
       groups: [
@@ -686,24 +709,7 @@ export function App(): ReactNode {
       key: 'formulas',
       label: 'Fórmulas',
       groups: [
-        { label: 'Inserir função', items: QUICK_FUNCS.map((f) => ({ key: f, label: f, icon: <Calculator24Regular />, onClick: () => setEditing(`=${f}(`) })) },
-        {
-          label: 'Dados',
-          items: [
-            { key: 'icsv', label: 'Importar CSV', icon: <ArrowUpload24Regular />, onClick: run(async () => { const d = await importCsv(); if (d) replace([d], null) }) },
-            { key: 'ixlsx', label: 'Importar Excel', icon: <DocumentTable24Regular />, onClick: run(async () => { const d = await importXlsx(); if (d) replace(d, null) }) },
-            { key: 'ecsv', label: 'Exportar CSV', icon: <ArrowDownload24Regular />, onClick: run(async () => { await exportCsv(sheet, docName) }) },
-            { key: 'exlsx', label: 'Exportar Excel', icon: <DocumentTable24Regular />, onClick: run(async () => { await exportXlsx(sheets, docName) }) }
-          ]
-        },
-        {
-          label: 'Arquivo',
-          items: [
-            { key: 'new', label: 'Novo', icon: <DocumentAdd24Regular />, onClick: () => replace([newSheet('Planilha1')], null) },
-            { key: 'open', label: 'Abrir', icon: <FolderOpen24Regular />, onClick: run(async () => { const r = await openWorkbook(); if (r) replace(r.sheets, r.path) }) },
-            { key: 'save', label: 'Salvar', icon: <Save24Regular />, onClick: run(async () => { const p = await saveWorkbook(sheets, docName); if (p) setPath(p) }) }
-          ]
-        }
+        { label: 'Inserir função', items: QUICK_FUNCS.map((f) => ({ key: f, label: f, icon: <Calculator24Regular />, onClick: () => setEditing(`=${f}(`) })) }
       ]
     },
     {

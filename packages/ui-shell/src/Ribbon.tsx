@@ -78,7 +78,10 @@ export function Ribbon({ tabs }: { tabs: RibbonTab[] }): ReactNode {
       <div style={{ display: 'flex', alignItems: 'stretch', height: 98, padding: '4px 2px', overflowX: 'auto' }}>
         {tab.groups.map((g, i) => (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', padding: '0 6px', borderRight: '1px solid var(--ao-border)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', flexWrap: 'wrap', alignContent: 'flex-start', height: 74, columnGap: 3, rowGap: 1 }}>
+            {/* Grade: até 3 linhas por coluna, fluindo para novas colunas. Usamos CSS Grid em vez de
+                flex column-wrap porque o flex com direção coluna + wrap tem largura colapsada no Chromium
+                (as colunas se sobrepõem). O grid dimensiona a largura corretamente. */}
+            <div style={{ display: 'grid', gridAutoFlow: 'column', gridTemplateRows: 'repeat(3, auto)', gridAutoColumns: 'max-content', alignContent: 'start', height: 74, columnGap: 3, rowGap: 1 }}>
               {g.items.map((it) => {
                 const btn = (
                   <button
