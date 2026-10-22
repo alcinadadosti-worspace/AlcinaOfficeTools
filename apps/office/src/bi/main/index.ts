@@ -2,7 +2,7 @@
 // Mantém a janela sem moldura (barra de título própria), múltiplas janelas,
 // estado de "documento sujo", configurações, recentes, PDF e consulta a dados.
 // O ciclo de vida do processo e o auto-update ficam no bootstrap da suíte.
-import { app, BrowserWindow, dialog, ipcMain, net, shell, nativeTheme } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, shell } from 'electron'
 import { promises as fs, existsSync } from 'node:fs'
 import { join, basename, extname } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -147,6 +147,18 @@ export function openBiWindow(initialFile: string | null = null): BrowserWindow {
   return win
 }
 
+// Abre o Analytics a partir da Central: foca uma janela já aberta ou cria a primeira.
+// (Dentro do Analytics, "Nova janela" continua criando janelas adicionais quando o usuário quiser.)
+export function launchBi(): BrowserWindow {
+  const existing = BrowserWindow.getAllWindows().find((w) => windows.has(w.webContents.id))
+  if (existing && !existing.isDestroyed()) {
+    if (existing.isMinimized()) existing.restore()
+    existing.focus()
+    return existing
+  }
+  return openBiWindow()
+}
+
 function windowFor(sender: Electron.WebContents): BrowserWindow | null {
   return BrowserWindow.fromWebContents(sender)
 }
@@ -182,8 +194,6 @@ async function exportPdf(opts: PdfExportOptions): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export function registerBiIpc(): void {
-  nativeTheme.themeSource = 'light'
-
   ipcMain.handle(IPC.info, () => ({
     name: app.getName(),
     version: app.getVersion(),

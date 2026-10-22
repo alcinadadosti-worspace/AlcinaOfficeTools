@@ -1,6 +1,6 @@
 // Processo principal: configura o electron-updater (provedor genérico no Render)
 // e repassa o estado para o renderer. Só age no app empacotado.
-import { app, ipcMain, type BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { UPDATER_CHANNELS, type UpdateStatus } from './ipc'
 
 export interface UpdaterOptions {
@@ -8,21 +8,23 @@ export interface UpdaterOptions {
   feedUrl?: string
 }
 
-// Janela-alvo atual e guarda de inicialização única: setupAutoUpdates pode ser chamado por janela,
-// mas os handlers IPC e os listeners do autoUpdater só podem ser registrados uma vez por processo.
-let targetWin: BrowserWindow | null = null
+// Guarda de inicialização única: setupAutoUpdates pode ser chamado por janela, mas os handlers IPC
+// e os listeners do autoUpdater só podem ser registrados uma vez por processo. O status é transmitido
+// a TODAS as janelas abertas — assim, no app único, o estado de atualização continua visível mesmo
+// que a Central seja fechada enquanto outra ferramenta segue aberta (apps avulsos têm 1 janela só).
 let initialized = false
 let lastStatus: UpdateStatus | null = null
 
 function send(s: UpdateStatus): void {
   lastStatus = s
-  if (targetWin && !targetWin.isDestroyed()) targetWin.webContents.send(UPDATER_CHANNELS.status, s)
+  for (const w of BrowserWindow.getAllWindows()) {
+    if (!w.isDestroyed()) w.webContents.send(UPDATER_CHANNELS.status, s)
+  }
 }
 
-export async function setupAutoUpdates(win: BrowserWindow, opts: UpdaterOptions = {}): Promise<void> {
-  targetWin = win
+export async function setupAutoUpdates(_win: BrowserWindow, opts: UpdaterOptions = {}): Promise<void> {
   if (initialized) {
-    if (lastStatus) send(lastStatus) // reenvia o último estado para a janela recém-criada
+    if (lastStatus) send(lastStatus) // reenvia o último estado (ex.: ao reabrir a Central)
     return
   }
   initialized = true
